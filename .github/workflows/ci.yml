@@ -35,9 +35,13 @@ jobs:
         run: npm audit --audit-level=high
       - name: Material de clave privada
         run: |
-          if grep -rInE 'BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY' \
-              --include='*.js' --include='*.json' --include='*.yml' --include='*.md' .; then
-            echo "Se ha encontrado material de clave privada en el repositorio"
+          # El propio workflow nombra el marcador que busca, así que se excluye.
+          hits=$(grep -rIlE -- '-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----' \
+            --include='*.js' --include='*.json' --include='*.yml' --include='*.md' \
+            --exclude-dir=.github --exclude-dir=node_modules . || true)
+          if [ -n "$hits" ]; then
+            echo "Clave privada en:"
+            echo "$hits"
             exit 1
           fi
 
