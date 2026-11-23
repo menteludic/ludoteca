@@ -1,0 +1,4608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ludoteca · Documento de proyecto v1.0</title>
+<style>
+:root{
+  --ink:#161d25; --muted:#5c6a78; --soft:#8b98a5;
+  --accent:#0b5f63; --accent-soft:#e8f1f1; --accent-line:#bfd8d8;
+  --warn:#a8431f; --warn-soft:#fbeee8;
+  --rule:#dde3e9; --paper:#fff; --bg:#f3f5f7;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0; background:var(--bg); color:var(--ink);
+  font-family:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  font-size:14.6px; line-height:1.6;}
+.page{max-width:960px; margin:0 auto; background:var(--paper); padding:0 64px 72px;
+  box-shadow:0 1px 2px rgba(16,24,32,.06),0 12px 40px rgba(16,24,32,.06);}
+
+/* Portada */
+.cover{padding:92px 0 0; min-height:100vh; position:relative; display:flex; flex-direction:column}
+.cover .rule{height:6px; width:88px; background:var(--accent); margin-bottom:34px}
+.cover .kicker{font-size:11.5px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--accent); font-weight:700; margin:0 0 14px}
+.cover h1{font-size:44px; line-height:1.08; letter-spacing:-.03em; margin:0 0 18px; font-weight:800; max-width:17em; text-wrap:balance}
+.cover .sub{font-size:17.5px; color:var(--muted); max-width:29em; margin:0 0 40px; line-height:1.55}
+.cover .facts{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 40px; margin-top:auto;
+  border-top:1.5px solid var(--ink); padding-top:18px; max-width:none}
+.cover .facts div{padding:9px 0; border-bottom:1px solid var(--rule)}
+.cover .facts span{display:block; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--soft); margin-bottom:3px}
+.cover .facts b{font-weight:600; font-size:13.5px}
+.cover .foot{position:static; margin-top:26px; display:flex;
+  justify-content:space-between; font-size:11.5px; color:var(--soft); border-top:1px solid var(--rule); padding-top:12px}
+
+/* Índice */
+.toc-page{break-before:page; page-break-before:always; padding-top:56px; min-height:90vh}
+.toc-page h2{font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent);
+  border-bottom:1.5px solid var(--ink); padding-bottom:10px; margin:0 0 22px}
+.toc-page .toc > ul{list-style:none; margin:0; padding:0; columns:2; column-gap:52px}
+.toc-page li{break-inside:avoid; page-break-inside:avoid; margin:0 0 12px; padding-left:0}
+.toc-page .toc > ul > li > a{font-weight:700; font-size:14px; color:var(--ink); text-decoration:none;
+  display:block; border-bottom:1px solid var(--rule); padding-bottom:7px}
+
+
+
+/* Cuerpo */
+h1.chapter{break-before:page; page-break-before:always; font-size:27px; line-height:1.16;
+  letter-spacing:-.02em; margin:0 0 4px; padding-top:58px; font-weight:800; position:relative}
+h1.chapter:before{content:""; position:absolute; top:26px; left:0; width:44px; height:4px; background:var(--accent)}
+h2{font-size:17.5px; letter-spacing:-.01em; margin:32px 0 4px; font-weight:720; break-after:avoid}
+h3{font-size:15px; margin:22px 0 2px; font-weight:700; break-after:avoid}
+p{margin:9px 0}
+ul,ol{margin:8px 0; padding-left:22px}
+li{margin:4px 0}
+strong{font-weight:650}
+code{font-family:var(--mono); font-size:.86em; background:#f1f4f7; padding:1px 5px; border-radius:3px; word-break:break-word}
+pre{background:#f7f9fa; border:1px solid var(--rule); border-left:3px solid var(--accent-line);
+  padding:14px 16px; overflow-x:auto; font-size:11.6px; line-height:1.5; break-inside:avoid}
+pre code{background:none; padding:0; font-size:inherit}
+blockquote{margin:16px 0; padding:10px 16px; background:var(--accent-soft);
+  border-left:3px solid var(--accent); font-size:13.6px}
+hr{border:none; border-top:1px solid var(--rule); margin:26px 0}
+
+table{width:100%; border-collapse:collapse; margin:14px 0 8px; font-size:12.5px; line-height:1.45}
+thead{display:table-header-group}
+th{text-align:left; font-size:9.8px; letter-spacing:.08em; text-transform:uppercase; color:var(--soft);
+  border-bottom:1.4px solid var(--ink); padding:7px 9px 6px 0; font-weight:700; vertical-align:bottom}
+td{border-bottom:1px solid var(--rule); padding:7px 9px 7px 0; vertical-align:top}
+th:last-child,td:last-child{padding-right:0}
+tbody tr:nth-child(even){background:#fbfcfd}
+tbody tr:last-child td{border-bottom:none}
+td:first-child{white-space:normal}
+td.id{white-space:nowrap; font-family:var(--mono); font-size:11.4px; color:var(--muted); letter-spacing:.01em}
+td:not(.ep) > code:only-child{white-space:nowrap}
+table.layers td:first-child{width:15%}
+table.endpoints td.ep{width:33%}
+table.endpoints td.ep code{word-break:normal; overflow-wrap:anywhere; white-space:normal}
+
+/* Anexos con banda */
+h1.chapter#anexo-a, h1.chapter[id^="anexo"]{ }
+
+@media print{
+  body{background:#fff; font-size:10.2pt; line-height:1.5}
+  .page{box-shadow:none; max-width:none; padding:0}
+  .cover{min-height:0; padding-top:0}
+  .cover .facts{margin-top:55mm}
+  .cover .foot{margin-top:14mm}
+  table{font-size:8.6pt}
+  tr{break-inside:avoid; page-break-inside:avoid}
+  thead{display:table-header-group}
+  pre{font-size:7.4pt}
+  h1.chapter{padding-top:0; break-before:page}
+  h1.chapter:before{display:none}
+  @page{size:A4; margin:17mm 15mm 18mm}
+}
+@media (max-width:760px){
+  .page{padding:0 22px 44px}
+  .cover{padding-top:40px}
+  .cover h1{font-size:31px}
+  .cover .facts{grid-template-columns:1fr}
+  .cover .foot{position:static; left:auto; right:auto; margin-top:32px}
+  .toc-page ul{columns:1}
+  table{font-size:11.8px}
+  th,td{padding-right:6px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <section class="cover">
+    <div class="rule"></div>
+    <p class="kicker">Ludoteca · Documento de proyecto</p>
+    <h1>Sistema de préstamo de juegos para eventos</h1>
+    <p class="sub">Alcance, modelo de datos, reglas, permisos, seguridad, arquitectura y plan para el evento de marzo de 2027. Con catálogo ilustrado y devolución sin etiquetas.</p>
+    <div class="facts">
+      <div><span>Versión</span><b>1.0 · base para el desarrollo</b></div>
+      <div><span>Fecha</span><b>23 de noviembre de 2026</b></div>
+      <div><span>Preparado por</span><b>Hermes, para Roberto M.</b></div>
+      <div><span>Extensión</span><b>20 capítulos · 6 anexos</b></div>
+      <div><span>Evento</span><b>marzo de 2027 (día por confirmar)</b></div>
+      <div><span>Ámbito</span><b>Un evento · un juego por jugador</b></div>
+    </div>
+    <div class="foot">
+      <span>Documento vivo: cada cambio de regla o de arquitectura se refleja aquí en el mismo commit.</span>
+      <span>v1.0</span>
+    </div>
+  </section>
+
+  <section class="toc-page">
+    <h2>Índice</h2>
+    <div class="toc">
+<ul>
+<li><a href="#1-control-de-versiones-y-aprobacion">1. Control de versiones y aprobación</a></li>
+<li><a href="#2-resumen-ejecutivo-objetivos-y-kpis">2. Resumen ejecutivo, objetivos y KPIs</a></li>
+<li><a href="#3-alcance">3. Alcance</a></li>
+<li><a href="#4-glosario-y-estados-del-juego">4. Glosario y estados del juego</a></li>
+<li><a href="#5-roles-permisos-y-ciclo-de-vida-de-las-cuentas">5. Roles, permisos y ciclo de vida de las cuentas</a></li>
+<li><a href="#6-flujos-de-uso">6. Flujos de uso</a></li>
+<li><a href="#7-modelo-de-datos-y-estados">7. Modelo de datos y estados</a></li>
+<li><a href="#8-reglas-de-negocio">8. Reglas de negocio</a></li>
+<li><a href="#9-el-evento-franjas-apertura-y-cierre">9. El evento: franjas, apertura y cierre</a></li>
+<li><a href="#10-requisitos-funcionales">10. Requisitos funcionales</a></li>
+<li><a href="#11-requisitos-no-funcionales">11. Requisitos no funcionales</a></li>
+<li><a href="#12-el-catalogo-de-boardgamegeek-a-la-aplicacion">12. El catálogo: de BoardGameGeek a la aplicación</a></li>
+<li><a href="#13-datos-personales-y-privacidad">13. Datos personales y privacidad</a></li>
+<li><a href="#14-seguridad">14. Seguridad</a></li>
+<li><a href="#15-arquitectura">15. Arquitectura</a></li>
+<li><a href="#16-calidad-y-pruebas">16. Calidad y pruebas</a></li>
+<li><a href="#17-estadisticas">17. Estadísticas</a></li>
+<li><a href="#18-despliegue-y-operacion">18. Despliegue y operación</a></li>
+<li><a href="#19-plan">19. Plan</a></li>
+<li><a href="#20-mejoras-futuras">20. Mejoras futuras</a></li>
+<li><a href="#anexo-a-registro-de-decisiones-adr">Anexo A · Registro de decisiones (ADR)</a></li>
+<li><a href="#anexo-b-matriz-de-permisos-por-endpoint">Anexo B · Matriz de permisos por endpoint</a></li>
+<li><a href="#anexo-c-esquema-de-la-base-de-datos">Anexo C · Esquema de la base de datos</a></li>
+<li><a href="#anexo-d-contrato-openapi">Anexo D · Contrato OpenAPI</a></li>
+<li><a href="#anexo-e-listas-de-comprobacion">Anexo E · Listas de comprobación</a></li>
+<li><a href="#anexo-f-catalogo-de-pruebas">Anexo F · Catálogo de pruebas</a></li>
+</ul>
+</div>
+
+  </section>
+
+  <h1 class="chapter" id="1-control-de-versiones-y-aprobacion">1. Control de versiones y aprobación</h1>
+<h2 id="11-historial">1.1 Historial</h2>
+<table>
+<thead>
+<tr>
+<th>Versión</th>
+<th>Fecha</th>
+<th>Autor</th>
+<th>Contenido</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.1</td>
+<td>12/11/2026</td>
+<td>Roberto M.</td>
+<td>Documento inicial: objetivos, actores y stack técnico.</td>
+</tr>
+<tr>
+<td>0.2</td>
+<td>23/11/2026</td>
+<td>Hermes</td>
+<td>Análisis crítico y decisiones D1–D12.</td>
+</tr>
+<tr>
+<td>1.0</td>
+<td>23/11/2026</td>
+<td>Hermes</td>
+<td>Documento de proyecto. Base para el desarrollo.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="12-aprobacion">1.2 Aprobación</h2>
+<table>
+<thead>
+<tr>
+<th>Rol</th>
+<th>Nombre</th>
+<th>Estado</th>
+<th>Fecha</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Promotor y responsable funcional</td>
+<td>Roberto M.</td>
+<td>Aprobado</td>
+<td>23/11/2026</td>
+</tr>
+<tr>
+<td>Asociación (titular del tratamiento de datos)</td>
+<td>Junta directiva</td>
+<td>Pendiente</td>
+<td>Antes de la fase 2</td>
+</tr>
+<tr>
+<td>Sysop (infraestructura y despliegue)</td>
+<td>Por designar</td>
+<td>Pendiente</td>
+<td>Antes de la fase 2</td>
+</tr>
+<tr>
+<td>Responsable de protección de datos</td>
+<td>Por designar</td>
+<td>Pendiente</td>
+<td>Antes de la fase 4</td>
+</tr>
+</tbody>
+</table>
+<p>Una aprobación pendiente no bloquea el desarrollo del núcleo, pero sí el tratamiento de datos reales y el despliegue en producción.</p>
+<h2 id="13-convenciones">1.3 Convenciones</h2>
+<ul>
+<li><strong>Código, base de datos y API en inglés</strong> (<code>loan</code>, <code>game</code>, <code>event</code>, <code>returned_at</code>). <strong>Interfaz y documentación en castellano.</strong> El glosario del capítulo 4 da la correspondencia.</li>
+<li>Los textos de la interfaz viven en un único fichero <code>ui/es.json</code>, con claves estables, para poder traducir sin tocar código.</li>
+<li>Requisitos citables: <code>RF-101</code>, <code>RN-07</code>, <code>RNF-03</code>, <code>SEC-04</code>, <code>UC-02</code>, <code>ADR-003</code>.</li>
+<li><strong>Obligatorio</strong> (MUST), <strong>recomendado</strong> (SHOULD), <strong>opcional</strong> (MAY).</li>
+<li>Solo queda una decisión abierta: el <strong>día exacto</strong> del evento de marzo de 2027. No bloquea el diseño.</li>
+</ul>
+<h1 class="chapter" id="2-resumen-ejecutivo-objetivos-y-kpis">2. Resumen ejecutivo, objetivos y KPIs</h1>
+<h2 id="21-el-problema">2.1 El problema</h2>
+<p>La asociación presta juegos durante un evento de uno a tres días. El control se lleva en papel o en una hoja de cálculo: al final del día nadie sabe con certeza qué juegos están fuera ni quién los tiene, y no queda registro de qué se jugó. Con 600 juegos y 1.500 visitantes al día, el mostrador se convierte en una cola si cada operación exige teclear.</p>
+<h2 id="22-la-solucion">2.2 La solución</h2>
+<p>Una aplicación web con tres pantallas:</p>
+<ul>
+<li><strong>El jugador</strong>, desde su móvil: se registra una vez, completa su perfil, ve el catálogo con imagen y estado de cada juego, y pide uno. Recibe un QR que enseña en el mostrador.</li>
+<li><strong>El controlador</strong>, desde una tablet: escanea ese QR, ve el nombre del jugador y el juego, y pulsa «Entregar». Para devolver, vuelve a escanear el QR del jugador o busca el juego por nombre.</li>
+<li><strong>El panel de sala</strong>, en un monitor con sesión de analista: muestra a la gente los juegos que están fuera y el ranking de los más prestados.</li>
+</ul>
+<p>Sin teclear nombres, sin papeletas y sin hojas de cálculo. Al cerrar el evento, el sistema ya tiene el registro completo y las estadísticas calculadas.</p>
+<h2 id="23-indicadores-de-exito">2.3 Indicadores de éxito</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Indicador</th>
+<th>Objetivo</th>
+<th>Cómo se mide</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">KPI-01</td>
+<td>Entregas por debajo de 20 segundos</td>
+<td>≥ 95 %</td>
+<td>La aplicación cronometra desde que el controlador abre el escáner hasta que confirma</td>
+</tr>
+<tr>
+<td class="id">KPI-02</td>
+<td>Incidencias sobre operaciones</td>
+<td>≤ 1 %</td>
+<td>Se considera incidencia: QR ilegible, préstamo no encontrado, conflicto por juego ya prestado o corrección manual</td>
+</tr>
+<tr>
+<td class="id">KPI-03</td>
+<td>Altas completadas sin ayuda</td>
+<td>≥ 90 %</td>
+<td>Prueba de usabilidad con cinco personas y observación en el evento piloto</td>
+</tr>
+<tr>
+<td class="id">KPI-04</td>
+<td>Catálogo utilizado</td>
+<td>≥ 60 % de los juegos prestados al menos una vez</td>
+<td>MET-03 sobre el total del evento</td>
+</tr>
+</tbody>
+</table>
+<h2 id="24-que-no-es-este-sistema">2.4 Qué no es este sistema</h2>
+<p>No es un sistema crítico y el documento no lo trata como tal. No hay compromiso de disponibilidad del 99,9 %, ni recuperación en minutos, ni plan de contingencia en papel. Si el servidor se cae un rato, el evento sigue: la gente sigue jugando y las operaciones se registran cuando vuelve. Lo que sí se exige es que <strong>el registro sea fiel</strong>: ni un préstamo inventado, ni uno perdido por un error de la aplicación.</p>
+<h1 class="chapter" id="3-alcance">3. Alcance</h1>
+<h2 id="31-dentro-del-mvp">3.1 Dentro del MVP</h2>
+<table>
+<thead>
+<tr>
+<th>Área</th>
+<th>Incluido</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cuentas</td>
+<td>Registro local con correo y contraseña, o con Google o Facebook; perfil con nombre, apellidos, DNI y declaración de mayoría de edad.</td>
+</tr>
+<tr>
+<td>Catálogo</td>
+<td>Importación desde CSV de BGG, imágenes, alta manual, ejemplares duplicados, bloqueo y retirada.</td>
+</tr>
+<tr>
+<td>Evento</td>
+<td>Franjas horarias, apertura automática, cierre manual, un solo evento abierto a la vez.</td>
+</tr>
+<tr>
+<td>Préstamo</td>
+<td>Solicitud, QR, entrega por escaneo, devolución, cancelación, un juego por jugador.</td>
+</tr>
+<tr>
+<td>Cierre</td>
+<td>Aviso con la lista de juegos fuera y cierre forzoso que los da por devueltos.</td>
+</tr>
+<tr>
+<td>Estadísticas</td>
+<td>Panel de sala público durante el evento y, después, préstamos por juego, tiempo medio de uso, catálogo utilizado y uso por día; informe y CSV.</td>
+</tr>
+<tr>
+<td>Administración</td>
+<td>Roles, eventos, franjas, configuración de acceso por evento, listado de usuarios con DNI, auditoría.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="32-fuera-del-alcance">3.2 Fuera del alcance</h2>
+<table>
+<thead>
+<tr>
+<th>Excluido</th>
+<th>Motivo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cola de espera y avisos</td>
+<td>Si está cogido, no está.</td>
+</tr>
+<tr>
+<td>Reserva anticipada</td>
+<td>No se contempla.</td>
+</tr>
+<tr>
+<td>Duración máxima, prórrogas y devoluciones tardías</td>
+<td>No hay plazo; se devuelve al terminar.</td>
+</tr>
+<tr>
+<td>Gestión de incidencias, piezas y recuentos</td>
+<td>Aceptar el juego es la revisión.</td>
+</tr>
+<tr>
+<td>Sanciones, fianzas y cobros</td>
+<td>La asociación no cobra.</td>
+</tr>
+<tr>
+<td>Funcionamiento sin red</td>
+<td>Se asume red durante el evento.</td>
+</tr>
+<tr>
+<td>Plan de contingencia en papel</td>
+<td>No procede en este documento.</td>
+</tr>
+<tr>
+<td>Etiquetas QR en las cajas</td>
+<td>No hay un sistema fiable de etiquetado; la devolución va por el QR del jugador o por búsqueda.</td>
+</tr>
+<tr>
+<td>Reserva de mesas, torneos, aforo, entradas</td>
+<td>Otros dominios.</td>
+</tr>
+<tr>
+<td>Aplicación nativa</td>
+<td>La web instalable cubre el caso.</td>
+</tr>
+<tr>
+<td>Menores de edad</td>
+<td>Solo pueden pedir juegos los mayores de 18 años.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="33-supuestos">3.3 Supuestos</h2>
+<ul>
+<li>Hay red wifi en el recinto y cubre el mostrador.</li>
+<li>El servidor está en un VPS y no en el recinto.</li>
+<li>La asociación tiene 4 a 6 tablets con cámara y Android 9 o superior, y una pantalla para el panel de sala.</li>
+<li>Los controladores son voluntarios con 15 minutos de formación.</li>
+<li>El catálogo está en el perfil público de BGG que indique la asociación.</li>
+<li>El evento dura entre uno y tres días y no hay dos eventos simultáneos.</li>
+</ul>
+<h2 id="34-restricciones">3.4 Restricciones</h2>
+<ul>
+<li><strong>Técnicas:</strong> Node.js, SQLite con el fichero de datos fuera del contenedor, REST con OpenAPI, JavaScript con JSDoc, estilo funcional sin <code>class</code>, <code>new</code> ni <code>this</code> en el código propio.</li>
+<li><strong>Legales:</strong> RGPD y LOPDGDD; solo mayores de edad; DNI como dato personal.</li>
+<li><strong>Económicas:</strong> infraestructura ≤ 12 €/mes, sin licencias de pago.</li>
+<li><strong>De terceros:</strong> el acceso automatizado a la página de BGG está bloqueado por Cloudflare; el catálogo se importa por CSV y las imágenes requieren la API con token de aplicación.</li>
+</ul>
+<h1 class="chapter" id="4-glosario-y-estados-del-juego">4. Glosario y estados del juego</h1>
+<p>Un concepto, un nombre, en la interfaz y en el código. El código usa el inglés; esta tabla da la correspondencia.</p>
+<h2 id="41-terminos">4.1 Términos</h2>
+<table>
+<thead>
+<tr>
+<th>Término (UI)</th>
+<th>Identificador en código</th>
+<th>Significado</th>
+<th>No usar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Juego</td>
+<td><code>game</code></td>
+<td>Un ejemplar físico de la asociación.</td>
+<td>«libro», «producto»</td>
+</tr>
+<tr>
+<td>Ejemplar</td>
+<td><code>game</code></td>
+<td>Cada copia física de un mismo título. Dos copias son dos juegos y se prestan por separado.</td>
+<td>«unidad»</td>
+</tr>
+<tr>
+<td>Ficha de BGG</td>
+<td><code>bgg_id</code></td>
+<td>Identificador del título en BoardGameGeek.</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Catálogo</td>
+<td><code>games</code></td>
+<td>El inventario completo de la asociación.</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Imagen</td>
+<td><code>image_path</code></td>
+<td>Miniatura del juego guardada en el servidor, para reconocerlo de un vistazo.</td>
+<td>«foto», «portada»</td>
+</tr>
+<tr>
+<td>Evento</td>
+<td><code>event</code></td>
+<td>Actividad temporal con franjas durante las que se presta.</td>
+<td>«feria», «jornada»</td>
+</tr>
+<tr>
+<td>Franja</td>
+<td><code>time_slot</code></td>
+<td>Intervalo de un evento en el que está abierto.</td>
+<td>«horario»</td>
+</tr>
+<tr>
+<td>Abierto</td>
+<td><code>open</code></td>
+<td>El evento admite recogidas en este momento.</td>
+<td>«activo»</td>
+</tr>
+<tr>
+<td>Cerrado</td>
+<td><code>closed</code></td>
+<td>No admite recogidas; sí devoluciones.</td>
+<td>«bloqueado»</td>
+</tr>
+<tr>
+<td>Préstamo</td>
+<td><code>loan</code></td>
+<td>Cesión de un juego a un jugador, desde la solicitud hasta la devolución.</td>
+<td>«alquiler»</td>
+</tr>
+<tr>
+<td>Solicitud</td>
+<td><code>requested</code></td>
+<td>El jugador ha pedido el juego y aún no lo tiene.</td>
+<td>«reserva»</td>
+</tr>
+<tr>
+<td>Entrega</td>
+<td><code>delivered</code></td>
+<td>El controlador acepta el QR y pone el juego en manos del jugador.</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Devolución</td>
+<td><code>returned</code></td>
+<td>El controlador recibe el juego y cierra el préstamo.</td>
+<td>«retorno»</td>
+</tr>
+<tr>
+<td>Bloqueo de solicitud</td>
+<td><code>request_ttl_minutes</code></td>
+<td>Minutos que una solicitud mantiene el juego apartado antes de caducar. Configurable por evento.</td>
+<td>«timeout»</td>
+</tr>
+<tr>
+<td>Jugador</td>
+<td><code>player</code></td>
+<td>Usuario registrado que puede pedir juegos.</td>
+<td>«usuario» a secas</td>
+</tr>
+<tr>
+<td>Controlador</td>
+<td><code>controller</code></td>
+<td>Usuario que entrega y recibe en el mostrador.</td>
+<td>«operador»</td>
+</tr>
+<tr>
+<td>Administrador de evento</td>
+<td><code>event_admin</code></td>
+<td>Coordina el evento y su catálogo.</td>
+<td>«supervisor»</td>
+</tr>
+<tr>
+<td>Administrador de aplicación</td>
+<td><code>app_admin</code></td>
+<td>Gestiona eventos, cuentas y catálogo global.</td>
+<td>«administrador de sistema»</td>
+</tr>
+<tr>
+<td>Analista</td>
+<td><code>analyst</code></td>
+<td>Consulta estadísticas y atiende el panel de sala; no opera.</td>
+<td>«reportero»</td>
+</tr>
+<tr>
+<td>QR del jugador</td>
+<td><code>player_qr</code></td>
+<td>Código temporal que identifica un préstamo solicitado.</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Panel de sala</td>
+<td><code>room_panel</code></td>
+<td>Página pública, sin sesión, con los juegos fuera y los rankings del evento abierto.</td>
+<td>«dashboard»</td>
+</tr>
+<tr>
+<td>Auditoría</td>
+<td><code>audit_log</code></td>
+<td>Registro de solo anexión con quién hizo qué y cuándo.</td>
+<td>«log»</td>
+</tr>
+<tr>
+<td>Ventana de mantenimiento</td>
+<td>—</td>
+<td>Momento sin evento abierto ni juegos prestados en el que se actualiza el catálogo.</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h2 id="42-los-cuatro-estados-del-juego">4.2 Los cuatro estados del juego</h2>
+<p>Se muestran así en la interfaz y se calculan así en el código:</p>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Definición</th>
+<th>Cómo se calcula</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Retirado</strong></td>
+<td>No está en la lista de BGG, pero conserva su historial.</td>
+<td><code>games.retired = 1</code></td>
+</tr>
+<tr>
+<td><strong>Bloqueado</strong></td>
+<td>Está en el catálogo y en el evento, pero un administrador no lo deja salir.</td>
+<td><code>event_games.blocked = 1</code></td>
+</tr>
+<tr>
+<td><strong>Prestado</strong></td>
+<td>Está en el evento pero lo tiene un jugador, o un administrador lo ha marcado así.</td>
+<td>Existe un préstamo activo <strong>o</strong> <code>event_games.manually_lent = 1</code></td>
+</tr>
+<tr>
+<td><strong>Disponible</strong></td>
+<td>En el catálogo, en el evento, sin bloquear y sin préstamo.</td>
+<td>Ninguna de las anteriores</td>
+</tr>
+</tbody>
+</table>
+<p>Cuando concurren varios, manda este orden: <strong>Retirado → Prestado → Bloqueado → Disponible</strong>. Un juego retirado nunca se muestra para pedir, aunque siga en un evento antiguo.</p>
+<blockquote>
+<p>El estado no se guarda: se calcula. Lo único que se guarda son las tres decisiones (<code>retired</code>, <code>blocked</code>, <code>manually_lent</code>) y los préstamos. Así no puede haber un juego «Disponible» que en realidad esté fuera.</p>
+</blockquote>
+<h2 id="43-terminos-prohibidos">4.3 Términos prohibidos</h2>
+<ul>
+<li><strong>«No disponible»</strong>: se sustituye por el estado concreto (Bloqueado, Prestado o Retirado).</li>
+<li><strong>«Borrado»</strong>: un juego nunca se borra si tiene historial; se <strong>retira</strong>.</li>
+<li><strong>«Reserva»</strong>: no existe. Existe <strong>solicitud</strong>, que caduca tras el bloqueo configurado.</li>
+<li><strong>«Devolución tardía»</strong>: no hay plazo, así que no hay tardanza.</li>
+</ul>
+<h1 class="chapter" id="5-roles-permisos-y-ciclo-de-vida-de-las-cuentas">5. Roles, permisos y ciclo de vida de las cuentas</h1>
+<h2 id="51-los-cinco-roles">5.1 Los cinco roles</h2>
+<table>
+<thead>
+<tr>
+<th>Rol</th>
+<th>Quién es</th>
+<th>Qué puede hacer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Jugador</strong></td>
+<td>Cualquier visitante registrado mayor de edad.</td>
+<td>Completar su perfil, ver el catálogo, pedir un juego, cancelar su solicitud y devolverlo.</td>
+</tr>
+<tr>
+<td><strong>Controlador</strong></td>
+<td>Voluntario de la asociación en el mostrador.</td>
+<td>Entregar y recibir juegos con la tablet; consultar la lista de juegos fuera.</td>
+</tr>
+<tr>
+<td><strong>Administrador de evento</strong></td>
+<td>Coordinador del evento.</td>
+<td>Todo lo del controlador, más bloquear juegos, cerrar el evento, corregir préstamos, dar de alta controladores y consultar los usuarios del evento con su DNI.</td>
+</tr>
+<tr>
+<td><strong>Administrador de aplicación</strong></td>
+<td>Responsable técnico de la asociación.</td>
+<td>Todo, en todos los eventos: crear eventos, importar el catálogo, gestionar cuentas y roles.</td>
+</tr>
+<tr>
+<td><strong>Analista</strong></td>
+<td>Persona que consulta resultados y atiende el panel de sala.</td>
+<td>Ver y exportar estadísticas y dejar el panel de sala funcionando. Nada más.</td>
+</tr>
+</tbody>
+</table>
+<p>Los roles <strong>se acumulan</strong> sobre una misma cuenta: un controlador puede ser jugador y pedir un juego en su descanso. No hay jerarquía implícita: cada permiso se comprueba en el servidor.</p>
+<h2 id="52-como-se-llega-a-cada-rol">5.2 Cómo se llega a cada rol</h2>
+<table>
+<thead>
+<tr>
+<th>Acción</th>
+<th>Quién la hace</th>
+<th>Sobre quién</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Crear cuenta</td>
+<td>La propia persona</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Completar perfil (nombre, apellidos, DNI, edad)</td>
+<td>La propia persona</td>
+<td>Su cuenta</td>
+</tr>
+<tr>
+<td>Nombrar controlador</td>
+<td>Administrador de evento</td>
+<td>Un usuario ya registrado</td>
+</tr>
+<tr>
+<td>Nombrar administrador de evento</td>
+<td>Administrador de aplicación</td>
+<td>Un usuario ya registrado</td>
+</tr>
+<tr>
+<td>Nombrar analista</td>
+<td>Administrador de aplicación</td>
+<td>Un usuario ya registrado</td>
+</tr>
+<tr>
+<td>Retirar un rol</td>
+<td>Administrador de aplicación</td>
+<td>Cualquiera, salvo el último administrador de aplicación</td>
+</tr>
+</tbody>
+</table>
+<p>Un rol retirado surte efecto inmediato: las sesiones abiertas de esa cuenta se revocan en la siguiente petición.</p>
+<h2 id="53-matriz-de-permisos">5.3 Matriz de permisos</h2>
+<p>● permitido · ◐ con condición · — denegado.</p>
+<table>
+<thead>
+<tr>
+<th>Operación</th>
+<th style="text-align: center;">Jugador</th>
+<th style="text-align: center;">Controlador</th>
+<th style="text-align: center;">Adm. evento</th>
+<th style="text-align: center;">Analista</th>
+<th style="text-align: center;">Adm. app.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Registrarse e iniciar sesión</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver la página pública del evento</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Editar su perfil y su contraseña</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver su propio DNI</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Consultar los usuarios del evento con su DNI</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver el DNI de un jugador en su ficha</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">◐ solo desde el listado del evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver catálogo y estado de cada juego</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Solicitar un juego</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Cancelar su solicitud</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver su préstamo activo</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Escanear el QR del jugador y entregar</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Recibir una devolución</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Buscar un jugador por nombre (alternativa al QR)</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td>Ver la lista de juegos fuera del evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">◐ solo agregados</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Bloquear o desbloquear un juego en el evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Marcar un juego como Prestado a mano</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Cerrar o reabrir el evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Cierre forzoso con juegos fuera</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Corregir un préstamo</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Nombrar controladores</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Nombrar administradores de evento y analistas</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Crear y editar eventos y franjas</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Configurar los métodos de acceso y el bloqueo de solicitud</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Importar o actualizar el catálogo y sus imágenes</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Retirar o reactivar un juego</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver estadísticas del evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Atender el panel de sala</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Exportar estadísticas</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td>Ver la auditoría</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">◐ solo su evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+</tbody>
+</table>
+<p>Condiciones:</p>
+<ul>
+<li><strong>Solo desde el listado del evento</strong>: el administrador de evento ve el DNI de quienes han pedido juegos en su evento, en la pantalla de usuarios; no lo ve en la ficha suelta de un jugador cualquiera, ni en eventos que no sean suyos.</li>
+<li><strong>Solo agregados</strong>: el analista ve números, nunca nombres ni identificadores de jugador.</li>
+</ul>
+<p>El administrador de aplicación ve cualquier DNI sin condición ni justificación previa.</p>
+<h2 id="54-matriz-por-campo">5.4 Matriz por campo</h2>
+<table>
+<thead>
+<tr>
+<th>Campo</th>
+<th>Su titular</th>
+<th>Controlador</th>
+<th>Adm. evento</th>
+<th>Analista</th>
+<th>Adm. app.</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nombre y apellidos</td>
+<td>●</td>
+<td>● al entregar</td>
+<td>●</td>
+<td>—</td>
+<td>●</td>
+</tr>
+<tr>
+<td>DNI</td>
+<td>●</td>
+<td>◐ enmascarado (<code>***123X</code>)</td>
+<td>● en el listado de su evento</td>
+<td>—</td>
+<td>●</td>
+</tr>
+<tr>
+<td>Correo</td>
+<td>●</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>●</td>
+</tr>
+<tr>
+<td>Contraseña</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Historial de préstamos</td>
+<td>●</td>
+<td>● del evento</td>
+<td>● del evento</td>
+<td>◐ agregado</td>
+<td>●</td>
+</tr>
+<tr>
+<td>Edad declarada</td>
+<td>●</td>
+<td>—</td>
+<td>●</td>
+<td>—</td>
+<td>●</td>
+</tr>
+</tbody>
+</table>
+<p>El controlador ve el nombre porque lo necesita para entregar el juego; no ve el correo, ni el DNI, ni el historial de otros eventos.</p>
+<h2 id="55-la-pantalla-de-usuarios-del-evento">5.5 La pantalla de usuarios del evento</h2>
+<p>Es la única del sistema que muestra varios DNI a la vez, y por eso tiene reglas propias:</p>
+<ul>
+<li>La abren el administrador de evento (para su evento) y el de aplicación (para cualquiera).</li>
+<li>Lista a los jugadores que han <strong>solicitado</strong> al menos un juego en ese evento, con su DNI, sus préstamos y las horas.</li>
+<li>Cada apertura y cada exportación dejan una línea en la auditoría: quién y sobre qué evento. Es traza, no permiso: no hay que justificar nada para ver.</li>
+<li>No muestra contraseñas ni correos de terceros.</li>
+</ul>
+<h1 class="chapter" id="6-flujos-de-uso">6. Flujos de uso</h1>
+<p>Los tiempos son objetivos de diseño y se miden en la prueba de usabilidad.</p>
+<h2 id="uc-01-crear-cuenta">UC-01 · Crear cuenta</h2>
+<ul>
+<li><strong>Actor:</strong> visitante.</li>
+<li><strong>Flujo:</strong> abre la aplicación, elige «Entrar con Google», «Entrar con Facebook» o «Crear cuenta con correo». En el caso local: correo, contraseña y confirmación. Recibe el alta inmediata, sin verificación por correo.</li>
+<li><strong>Postcondición:</strong> cuenta creada con rol jugador y sesión iniciada.</li>
+<li><strong>Errores:</strong> correo ya registrado → se ofrece iniciar sesión o recuperar la contraseña (UC-16); contraseña débil → se explica el mínimo (10 caracteres).</li>
+<li><strong>Tiempo objetivo:</strong> ≤ 40 s.</li>
+</ul>
+<h2 id="uc-02-completar-el-perfil">UC-02 · Completar el perfil</h2>
+<ul>
+<li><strong>Actor:</strong> jugador.</li>
+<li><strong>Precondición:</strong> sesión iniciada.</li>
+<li><strong>Flujo:</strong> nombre completo, apellidos, DNI (o NIF o NIE) y casilla «declaro ser mayor de 18 años». La política de datos está enlazada en la misma pantalla.</li>
+<li><strong>Postcondición:</strong> perfil completo; ya puede pedir juegos.</li>
+<li><strong>Regla:</strong> sin perfil completo no se puede solicitar; la aplicación lo explica antes de que el jugador llegue al mostrador.</li>
+</ul>
+<h2 id="uc-03-consultar-el-evento-y-el-catalogo">UC-03 · Consultar el evento y el catálogo</h2>
+<ul>
+<li><strong>Flujo:</strong> al entrar, el jugador ve el estado del evento. Si está abierto: nombre, descripción, franjas y botón «Buscar juego». Si está cerrado: mensaje claro de que ahora no se pueden coger juegos, con la próxima franja.</li>
+<li><strong>Catálogo:</strong> cada juego se muestra con su <strong>imagen</strong>, su nombre y su estado. Solo los <strong>Disponibles</strong> se pueden seleccionar; los demás se ven en gris con su motivo.</li>
+<li><strong>Búsqueda:</strong> por nombre, tolerante a mayúsculas y acentos.</li>
+</ul>
+<h2 id="uc-04-solicitar-un-juego">UC-04 · Solicitar un juego</h2>
+<ul>
+<li><strong>Actor:</strong> jugador.</li>
+<li><strong>Precondiciones:</strong> perfil completo, evento abierto, sin préstamo activo.</li>
+<li><strong>Flujo:</strong> elige un juego disponible y pulsa «Pedir». La pantalla muestra un QR grande y un código de 6 caracteres, válidos durante el bloqueo configurado del evento (15 minutos por defecto).</li>
+<li><strong>Postcondición:</strong> préstamo en estado <code>REQUESTED</code>.</li>
+<li><strong>Errores:</strong> ya tiene un préstamo → se le indica cuál debe devolver; el juego acaba de ocuparse → se le avisa y se le propone otro.</li>
+<li><strong>Tiempo objetivo:</strong> ≤ 15 s.</li>
+</ul>
+<h2 id="uc-05-entregar-en-el-mostrador">UC-05 · Entregar en el mostrador</h2>
+<ul>
+<li><strong>Actor:</strong> controlador.</li>
+<li><strong>Precondición:</strong> evento abierto; el jugador muestra su QR.</li>
+<li><strong>Flujo:</strong> 1) abre «Mostrador» en la tablet; 2) pulsa «Escanear» y enfoca el QR del jugador; 3) la pantalla muestra en grande el nombre del jugador y la imagen y el nombre del juego; 4) pulsa «Entregar».</li>
+<li><strong>Postcondición:</strong> préstamo <code>DELIVERED</code>, con controlador y hora del servidor.</li>
+<li><strong>Tiempo objetivo:</strong> ≤ 20 s desde que abre el escáner.</li>
+<li><strong>Errores:</strong> QR caducado → el jugador lo regenera desde su móvil; juego ya prestado → mensaje «lo tiene X desde las 17:04»; juego bloqueado → mensaje con el motivo; evento cerrado → no se permite.</li>
+<li><strong>Alternativa sin QR:</strong> buscar al jugador por nombre y apellidos; la entrega exige confirmar la inicial del DNI que ve el jugador en su pantalla, para no equivocarse de persona.</li>
+</ul>
+<h2 id="uc-06-devolver">UC-06 · Devolver</h2>
+<ul>
+<li><strong>Actor:</strong> controlador.</li>
+<li><strong>Flujo:</strong> el jugador deja los juegos en el mostrador y muestra su QR (o dice su nombre). El controlador pulsa «Devolver», escanea el QR del jugador —o busca el juego por nombre— y la pantalla muestra el préstamo abierto y el tiempo que ha estado fuera. Pulsa «Devolver».</li>
+<li><strong>Postcondición:</strong> préstamo <code>RETURNED</code>; el juego vuelve a Disponible.</li>
+<li><strong>Regla:</strong> se puede devolver siempre, aunque el evento esté cerrado.</li>
+<li><strong>Errores:</strong> el jugador no tiene préstamo abierto → se muestra su último préstamo y se ofrece corregir; si no se le identifica, se busca el juego entre los préstamos abiertos.</li>
+<li><strong>Nota:</strong> no hay etiquetas QR en las cajas. La identificación del préstamo va por el jugador; el juego, por nombre o por la lista de lo que tiene fuera.</li>
+</ul>
+<h2 id="uc-07-cancelar-o-dejar-caducar-una-solicitud">UC-07 · Cancelar o dejar caducar una solicitud</h2>
+<ul>
+<li>El jugador puede cancelar desde su móvil. Si no se presenta en el tiempo de bloqueo configurado, la solicitud caduca sola.</li>
+<li>Al caducar, el juego vuelve a estar Disponible para cualquiera.</li>
+</ul>
+<h2 id="uc-08-cerrar-el-evento-con-juegos-fuera">UC-08 · Cerrar el evento con juegos fuera</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de evento.</li>
+<li><strong>Flujo:</strong> pulsa «Cerrar evento». Si hay juegos fuera, el sistema muestra la lista con jugador, juego y hora de salida, y ofrece dos caminos: esperar a que se devuelvan, o <strong>cerrar de todos modos</strong>, lo que marca esos préstamos como devueltos con la marca <code>forced_close</code>.</li>
+<li><strong>Regla:</strong> el cierre forzoso no borra nada: queda registrado quién lo hizo, cuándo y qué préstamos se cerraron así.</li>
+<li><strong>Efecto:</strong> el evento pasa a Cerrado; se calculan las estadísticas y se genera el informe.</li>
+</ul>
+<h2 id="uc-09-bloquear-un-juego">UC-09 · Bloquear un juego</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de evento.</li>
+<li><strong>Flujo:</strong> desde la ficha del juego, elige «Bloquear» y escribe el motivo (dañado, incompleto, reservado para una actividad). El juego sigue listado, pero no se puede pedir.</li>
+<li><strong>Regla:</strong> no se puede bloquear ni retirar un juego con préstamo activo; primero se devuelve.</li>
+</ul>
+<h2 id="uc-10-corregir-un-prestamo">UC-10 · Corregir un préstamo</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de evento.</li>
+<li><strong>Casos:</strong> el controlador entregó el juego a la persona equivocada, o devolvió una caja que no era.</li>
+<li><strong>Flujo:</strong> busca el préstamo, elige «Corregir», indica qué cambia y por qué. La corrección se guarda como asiento nuevo en la auditoría; el préstamo muestra la marca «corregido».</li>
+<li><strong>Regla:</strong> el controlador no corrige.</li>
+</ul>
+<h2 id="uc-11-importar-el-catalogo-y-sus-imagenes">UC-11 · Importar el catálogo y sus imágenes</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de aplicación.</li>
+<li><strong>Precondición:</strong> no hay ningún evento abierto y no hay juegos prestados.</li>
+<li><strong>Flujo:</strong> descarga el CSV de su colección desde BGG, lo sube y revisa la previsualización (altas, cambios, duplicados y juegos desaparecidos). Confirma. Después, o en el mismo paso, se descargan las imágenes que falten.</li>
+<li><strong>Efecto:</strong> altas nuevas, actualización de nombres, años e imágenes; los que ya no están pasan a <strong>Retirado</strong> si tienen historial; si no lo tienen, se pueden eliminar.</li>
+<li><strong>Duplicados:</strong> si la colección tiene dos copias del mismo título, se crean dos juegos con el mismo <code>bgg_id</code> y distinta etiqueta («Catan», «Catan (2)»), y se prestan por separado.</li>
+<li><strong>Regla:</strong> nunca se toca un juego con préstamo activo; si lo hay, la importación se bloquea y se explica por qué.</li>
+</ul>
+<h2 id="uc-12-nombrar-controlador">UC-12 · Nombrar controlador</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de evento.</li>
+<li><strong>Flujo:</strong> busca a la persona entre los usuarios registrados, la selecciona y confirma. La persona recibe un aviso en la aplicación y ve el menú de mostrador la próxima vez que entre.</li>
+<li><strong>Regla:</strong> si no está registrada, se le pide que se registre; no se crean cuentas a mano.</li>
+</ul>
+<h2 id="uc-13-configurar-el-evento">UC-13 · Configurar el evento</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de aplicación.</li>
+<li><strong>Flujo:</strong> en la ficha del evento: tres casillas de acceso (cuenta local, Google, Facebook), al menos una activa; los minutos de bloqueo de solicitud (15 por defecto, máximo 120); y cuántos elementos muestra cada lista del panel de sala (5 por defecto, máximo 20).</li>
+<li><strong>Efecto:</strong> la pantalla de acceso muestra solo los métodos permitidos; el bloqueo se aplica a las nuevas solicitudes; el panel recorta sus listas a ese número.</li>
+</ul>
+<h2 id="uc-14-consultar-los-usuarios-del-evento">UC-14 · Consultar los usuarios del evento</h2>
+<ul>
+<li><strong>Actor:</strong> administrador de evento.</li>
+<li><strong>Flujo:</strong> abre «Usuarios del evento» y ve la tabla con nombre, DNI, juegos pedidos y horas. Puede ordenar, buscar por nombre y exportar.</li>
+<li><strong>Efecto:</strong> queda un asiento de auditoría por cada apertura y por cada exportación.</li>
+<li><strong>Regla:</strong> solo aparecen personas que han solicitado algo en ese evento; no es un listado general de cuentas.</li>
+</ul>
+<h2 id="uc-15-panel-de-sala">UC-15 · Panel de sala</h2>
+<ul>
+<li><strong>Actor:</strong> cualquiera. <strong>No hace falta cuenta ni sesión.</strong></li>
+<li><strong>Flujo:</strong> se abre <code>https://…/panel</code> en el monitor y se deja a pantalla completa. Se refresca solo cada 30 segundos y no requiere interacción.</li>
+<li><strong>Contenido:</strong> tres listas del evento abierto, cada una recortada al número de elementos configurado en el evento:
+  1. <strong>Juegos fuera</strong>, con imagen, nombre y tiempo transcurrido, ordenados de más a menos tiempo en la mesa. Si no caben todos, se recorta por el final: se ven los que más tiempo llevan.
+  2. <strong>Más prestados:</strong> los que más veces han salido.
+  3. <strong>Más jugados:</strong> los que más veces han superado el umbral de uso.
+  Con la hora del último refresco en un extremo.</li>
+<li><strong>Sin evento abierto:</strong> no se muestra ninguna lista, solo el aviso «Ahora no hay ningún evento abierto».</li>
+<li><strong>Regla:</strong> no muestra nombres de jugadores ni DNI, y no pide evento porque solo hay uno abierto.</li>
+</ul>
+<h2 id="uc-16-recuperar-la-contrasena">UC-16 · Recuperar la contraseña</h2>
+<ul>
+<li><strong>Actor:</strong> cualquiera con cuenta local.</li>
+<li><strong>Tiempo objetivo:</strong> ≤ 90 s desde que pulsa «He olvidado mi contraseña» hasta «Enlace enviado».</li>
+</ul>
+<p><strong>Flujo:</strong></p>
+<ol>
+<li>«He olvidado mi contraseña» en la pantalla de acceso.</li>
+<li>Escribe su correo y pulsa «Continuar».</li>
+<li>La pantalla muestra el correo de destino a 20 px y en negrita —«Enviaremos el enlace a juan@ejemplo.com»—, con un botón «Corregir» que vuelve al paso 2 conservando lo escrito.</li>
+<li>Al confirmar, se envía un enlace de un solo uso, válido 30 minutos. La pantalla dice «Enlace enviado» y recuerda mirar en la carpeta de spam. Se puede pedir otro pasados 60 segundos.</li>
+<li>El enlace abre una página con dos campos: nueva contraseña y confirmación, con la misma regla que en el registro (10 caracteres como mínimo). Al guardar, se cierran todas las sesiones abiertas.</li>
+</ol>
+<p><strong>Si el enlace caduca o ya se ha usado:</strong> la página lo dice y ofrece pedir uno nuevo, sin volver a empezar.</p>
+<p><strong>Ayuda siempre visible</strong> en las tres pantallas de la recuperación, incluida la de confirmación: «Si el correo no es el correcto o no te llega el enlace, pide ayuda a un administrador del evento; está en el mostrador. Si siempre has entrado con Google o Facebook, usa ese botón.»</p>
+<p><strong>Regla:</strong> la respuesta es la misma exista o no la cuenta —a un correo desconocido no se le envía nada—, y el correo que se enseña es el que ha escrito el usuario, nunca uno leído de la base de datos. Como mucho, tres peticiones por hora y cuenta.</p>
+<h1 class="chapter" id="7-modelo-de-datos-y-estados">7. Modelo de datos y estados</h1>
+<h2 id="71-tablas">7.1 Tablas</h2>
+<table>
+<thead>
+<tr>
+<th>Tabla</th>
+<th>Contenido</th>
+<th>Claves e índices</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>users</code></td>
+<td>Cuenta y perfil: <code>id</code>, <code>email</code>, <code>password_hash</code>, <code>google_sub</code>, <code>facebook_sub</code>, <code>first_name</code>, <code>last_name</code>, <code>dni_encrypted</code>, <code>dni_masked</code>, <code>adult_confirmed_at</code>, <code>created_at</code></td>
+<td><code>email</code> único, <code>google_sub</code> único, <code>facebook_sub</code> único</td>
+</tr>
+<tr>
+<td><code>user_roles</code></td>
+<td><code>user_id</code>, <code>role</code></td>
+<td>PK compuesta</td>
+</tr>
+<tr>
+<td><code>sessions</code></td>
+<td><code>id</code>, <code>user_id</code>, <code>created_at</code>, <code>expires_at</code>, <code>revoked_at</code>, <code>user_agent</code></td>
+<td>índice por <code>user_id</code></td>
+</tr>
+<tr>
+<td><code>email_tokens</code></td>
+<td><code>id</code>, <code>user_id</code>, <code>token_hash</code>, <code>purpose</code>, <code>expires_at</code>, <code>used_at</code></td>
+<td><code>token_hash</code> único, índice <code>(user_id, expires_at)</code></td>
+</tr>
+<tr>
+<td><code>events</code></td>
+<td><code>id</code>, <code>name</code>, <code>description</code>, <code>instructions</code>, <code>privacy_policy</code>, <code>starts_at</code>, <code>ends_at</code>, <code>timezone</code>, <code>allow_local</code>, <code>allow_google</code>, <code>allow_facebook</code>, <code>request_ttl_minutes</code>, <code>panel_loans_limit</code>, <code>panel_ranking_limit</code>, <code>manual_closed_until</code>, <code>created_by</code></td>
+<td>índice por <code>starts_at</code></td>
+</tr>
+<tr>
+<td><code>time_slots</code></td>
+<td><code>id</code>, <code>event_id</code>, <code>starts_at</code>, <code>ends_at</code></td>
+<td>índice por <code>event_id</code></td>
+</tr>
+<tr>
+<td><code>games</code></td>
+<td><code>id</code>, <code>bgg_id</code>, <code>name</code>, <code>year</code>, <code>copy_label</code>, <code>image_path</code>, <code>image_status</code>, <code>retired</code>, <code>notes</code>, <code>created_at</code></td>
+<td>índice <code>bgg_id</code>, <code>name</code></td>
+</tr>
+<tr>
+<td><code>event_games</code></td>
+<td><code>event_id</code>, <code>game_id</code>, <code>blocked</code>, <code>block_reason</code>, <code>manually_lent</code>, <code>updated_by</code>, <code>updated_at</code></td>
+<td>PK <code>(event_id, game_id)</code></td>
+</tr>
+<tr>
+<td><code>loans</code></td>
+<td><code>id</code>, <code>event_id</code>, <code>game_id</code>, <code>user_id</code>, <code>status</code>, <code>requested_at</code>, <code>delivered_at</code>, <code>delivered_by</code>, <code>returned_at</code>, <code>returned_by</code>, <code>closed_reason</code>, <code>corrected</code>, <code>version</code></td>
+<td>índice <code>(game_id, status)</code>, <code>(user_id, status)</code></td>
+</tr>
+<tr>
+<td><code>qr_tokens</code></td>
+<td><code>token_hash</code>, <code>loan_id</code>, <code>expires_at</code>, <code>used_at</code></td>
+<td>PK <code>token_hash</code>, índice <code>loan_id</code></td>
+</tr>
+<tr>
+<td><code>audit_log</code></td>
+<td><code>id</code>, <code>actor_id</code>, <code>action</code>, <code>entity</code>, <code>entity_id</code>, <code>data</code>, <code>created_at</code>, <code>prev_hash</code>, <code>hash</code></td>
+<td>índice <code>(entity, entity_id)</code>, <code>(created_at)</code></td>
+</tr>
+<tr>
+<td><code>settings</code></td>
+<td><code>key</code>, <code>value</code></td>
+<td>PK <code>key</code></td>
+</tr>
+</tbody>
+</table>
+<p>Notas de diseño:</p>
+<ul>
+<li>El DNI se guarda cifrado (<code>dni_encrypted</code>) y enmascarado (<code>dni_masked</code>) para poder mostrarlo sin descifrar cuando el rol lo permite.</li>
+<li><code>bgg_id</code> <strong>no es único</strong>: dos copias del mismo título comparten identificador y se distinguen por <code>copy_label</code> y por su propio <code>id</code>.</li>
+<li><code>image_path</code> apunta al fichero de la miniatura en el servidor; si está vacío, la interfaz muestra un marcador con la inicial del juego.</li>
+<li>No hay tabla de incidencias, de cola ni de etiquetas QR: no existen en el alcance.</li>
+<li><code>loans.status</code> solo admite cuatro valores: <code>REQUESTED</code>, <code>DELIVERED</code>, <code>RETURNED</code>, <code>CANCELLED</code>.</li>
+<li>La auditoría es de solo anexión y encadena el hash del asiento anterior: si alguien altera una fila, la cadena deja de cuadrar.</li>
+</ul>
+<h2 id="72-estados-del-prestamo">7.2 Estados del préstamo</h2>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Puede pasar a</th>
+<th>Disparador</th>
+<th>Quién</th>
+<th>Condición</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REQUESTED</code></td>
+<td><code>DELIVERED</code></td>
+<td>Escaneo del QR y confirmación</td>
+<td>Controlador</td>
+<td>Evento abierto, juego disponible, sin otro préstamo activo del jugador</td>
+</tr>
+<tr>
+<td><code>REQUESTED</code></td>
+<td><code>CANCELLED</code></td>
+<td>Cancelación o fin del bloqueo configurado</td>
+<td>Jugador o sistema</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>DELIVERED</code></td>
+<td><code>RETURNED</code></td>
+<td>Escaneo del QR del jugador o búsqueda y confirmación</td>
+<td>Controlador</td>
+<td>Siempre, con evento abierto o cerrado</td>
+</tr>
+<tr>
+<td><code>DELIVERED</code></td>
+<td><code>RETURNED</code> (forzado)</td>
+<td>Cierre del evento</td>
+<td>Adm. evento</td>
+<td>Queda marca <code>forced_close</code></td>
+</tr>
+<tr>
+<td><code>RETURNED</code></td>
+<td>—</td>
+<td>Terminal</td>
+<td>—</td>
+<td>Se corrige con asiento de auditoría, no cambiando de estado</td>
+</tr>
+<tr>
+<td><code>CANCELLED</code></td>
+<td>—</td>
+<td>Terminal</td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>No hay estado «vencido» porque no hay plazo. Un juego puede estar fuera tres días: la lista de cierre lo mostrará.</p>
+<h2 id="73-invariantes">7.3 Invariantes</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Invariante</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">INV-01</td>
+<td>Un juego no puede tener dos préstamos <code>DELIVERED</code> a la vez.</td>
+</tr>
+<tr>
+<td class="id">INV-02</td>
+<td>Un jugador no puede tener más de un préstamo activo (<code>REQUESTED</code> o <code>DELIVERED</code>).</td>
+</tr>
+<tr>
+<td class="id">INV-03</td>
+<td>No se entrega con el evento cerrado.</td>
+</tr>
+<tr>
+<td class="id">INV-04</td>
+<td>No se entrega un juego retirado, bloqueado, marcado como prestado a mano o ausente del evento.</td>
+</tr>
+<tr>
+<td class="id">INV-05</td>
+<td>La devolución se acepta siempre, también con el evento cerrado.</td>
+</tr>
+<tr>
+<td class="id">INV-06</td>
+<td>Solo un controlador o un administrador entrega y devuelve.</td>
+</tr>
+<tr>
+<td class="id">INV-07</td>
+<td>Un QR sirve una sola vez y caduca al cumplirse el bloqueo configurado del evento.</td>
+</tr>
+<tr>
+<td class="id">INV-08</td>
+<td>No se retira ni se bloquea un juego con préstamo activo.</td>
+</tr>
+<tr>
+<td class="id">INV-09</td>
+<td>El catálogo solo se importa si no hay evento abierto ni juegos prestados.</td>
+</tr>
+<tr>
+<td class="id">INV-10</td>
+<td>Solo puede haber un evento abierto a la vez.</td>
+</tr>
+<tr>
+<td class="id">INV-11</td>
+<td>El DNI se muestra entero a su titular, al administrador de aplicación y al de evento en el listado de su evento; el controlador lo ve enmascarado.</td>
+</tr>
+<tr>
+<td class="id">INV-12</td>
+<td>La auditoría no se modifica ni se borra; solo se añade.</td>
+</tr>
+<tr>
+<td class="id">INV-13</td>
+<td>Sin perfil completo y sin declaración de mayoría de edad no se puede solicitar.</td>
+</tr>
+<tr>
+<td class="id">INV-14</td>
+<td>Toda entrega y toda devolución registran quién y cuándo, con la hora del servidor.</td>
+</tr>
+<tr>
+<td class="id">INV-15</td>
+<td>Dos ejemplares del mismo título son juegos distintos y se prestan por separado.</td>
+</tr>
+<tr>
+<td class="id">INV-16</td>
+<td>Cada apertura o exportación de la pantalla de usuarios del evento deja asiento de auditoría.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="74-calculo-del-estado-del-juego">7.4 Cálculo del estado del juego</h2>
+<pre><code class="language-text">if game.retired                     -&gt; RETIRADO
+else if active_loan(game, event)     -&gt; PRESTADO
+else if event_game.manually_lent     -&gt; PRESTADO
+else if event_game.blocked           -&gt; BLOQUEADO
+else                                 -&gt; DISPONIBLE
+</code></pre>
+<p>Una sola función pura, una sola prueba por rama, y la interfaz nunca decide por su cuenta: recibe el estado ya calculado.</p>
+<h2 id="75-auditoria">7.5 Auditoría</h2>
+<p>Se registra, como mínimo: inicio y cierre de sesión, creación de cuenta, cambio de perfil, cambio de rol, solicitud, entrega, devolución, cancelación, bloqueo, desbloqueo, corrección, importación de catálogo, descarga de imágenes, cierre de evento, y apertura y exportación del listado de usuarios.</p>
+<p>Cada asiento guarda <code>actor_id</code>, <code>action</code>, entidad, identificador, datos relevantes (sin DNI ni contraseñas), fecha y hora del servidor, y el hash encadenado. La comprobación de integridad es un comando de administración que recorre la cadena y avisa del primer asiento roto.</p>
+<h1 class="chapter" id="8-reglas-de-negocio">8. Reglas de negocio</h1>
+<p>Veintiocho reglas, todas verificables con una prueba automática. Si una cambia, cambia aquí y en su prueba en el mismo commit.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Regla</th>
+<th>Verificación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RN-01</td>
+<td>Solo pueden pedir juegos las personas mayores de 18 años, con declaración expresa en el perfil.</td>
+<td>Sin <code>adult_confirmed_at</code>, la solicitud se rechaza con <code>ADULT_REQUIRED</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-02</td>
+<td>Para pedir hace falta el perfil completo: nombre, apellidos y DNI, NIF o NIE.</td>
+<td>Perfil incompleto → <code>PROFILE_INCOMPLETE</code>, con el enlace a completarlo.</td>
+</tr>
+<tr>
+<td class="id">RN-03</td>
+<td>Un jugador solo puede tener un préstamo activo a la vez.</td>
+<td>Segundo intento → <code>LOAN_ALREADY_ACTIVE</code>, indicando cuál devolver.</td>
+</tr>
+<tr>
+<td class="id">RN-04</td>
+<td>Solo se puede solicitar con el evento abierto.</td>
+<td>Evento cerrado → <code>EVENT_CLOSED</code>, con la próxima franja.</td>
+</tr>
+<tr>
+<td class="id">RN-05</td>
+<td>Solo se puede pedir un juego en estado Disponible.</td>
+<td>Bloqueado, prestado o retirado → <code>GAME_NOT_AVAILABLE</code> con el motivo.</td>
+</tr>
+<tr>
+<td class="id">RN-06</td>
+<td>Una solicitud caduca cuando se cumple el bloqueo configurado del evento (15 minutos por defecto, máximo 120).</td>
+<td>Trabajo programado cada minuto; pasa a <code>CANCELLED</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-07</td>
+<td>La entrega la hace un controlador escaneando el QR del jugador.</td>
+<td>Sin rol controlador → <code>FORBIDDEN</code>; sin QR válido → <code>QR_INVALID</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-08</td>
+<td>El QR es de un solo uso y caduca al cumplirse el bloqueo configurado del evento.</td>
+<td>Segundo uso → <code>QR_ALREADY_USED</code>; caducado → <code>QR_EXPIRED</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-09</td>
+<td>En un conflicto por el mismo juego gana la primera entrega confirmada; la otra se cancela.</td>
+<td>Prueba de concurrencia con dos peticiones simultáneas.</td>
+</tr>
+<tr>
+<td class="id">RN-10</td>
+<td>No se entrega con el evento cerrado, aunque la solicitud siga viva.</td>
+<td>Entrega con evento cerrado → <code>EVENT_CLOSED</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-11</td>
+<td>La devolución se acepta siempre, con el evento abierto o cerrado.</td>
+<td>Devolución a las 23:00 con evento cerrado: aceptada.</td>
+</tr>
+<tr>
+<td class="id">RN-12</td>
+<td>La devolución se hace escaneando el QR del jugador o buscando el juego entre los préstamos abiertos.</td>
+<td>Sin QR, la búsqueda por nombre identifica el préstamo y exige confirmación.</td>
+</tr>
+<tr>
+<td class="id">RN-13</td>
+<td>Si el jugador no tiene préstamo abierto, se avisa, se muestra su último préstamo y se ofrece corregir.</td>
+<td>Prueba con un jugador sin préstamo.</td>
+</tr>
+<tr>
+<td class="id">RN-14</td>
+<td>No hay plazo de devolución, ni prórrogas, ni penalizaciones.</td>
+<td>No existe ningún campo de vencimiento ni tarea de retraso.</td>
+</tr>
+<tr>
+<td class="id">RN-15</td>
+<td>El bloqueo de un juego exige motivo y se muestra en el catálogo.</td>
+<td>Sin motivo no se guarda.</td>
+</tr>
+<tr>
+<td class="id">RN-16</td>
+<td>Marcar un juego como Prestado a mano es exclusivo del administrador de evento y lo saca de la lista de disponibles.</td>
+<td>Prueba con el rol de controlador: denegado.</td>
+</tr>
+<tr>
+<td class="id">RN-17</td>
+<td>No se bloquea ni se retira un juego con préstamo activo.</td>
+<td>Ambos intentos → <code>GAME_ON_LOAN</code>.</td>
+</tr>
+<tr>
+<td class="id">RN-18</td>
+<td>Un juego que desaparece de BGG pasa a Retirado si tiene historial, y deja de ofrecerse.</td>
+<td>Importación con un juego desaparecido y con préstamos antiguos.</td>
+</tr>
+<tr>
+<td class="id">RN-19</td>
+<td>El controlador ve el DNI enmascarado. El administrador de evento lo ve en el listado de su evento y el de aplicación en cualquier ficha.</td>
+<td>Prueba de cada rol contra la ficha y contra el listado.</td>
+</tr>
+<tr>
+<td class="id">RN-20</td>
+<td>El DNI se conserva mientras exista la cuenta; se borra con ella o cuando su titular lo pida.</td>
+<td>Borrado de cuenta y comprobación posterior del campo.</td>
+</tr>
+<tr>
+<td class="id">RN-21</td>
+<td>Solo puede haber un evento abierto a la vez.</td>
+<td>Al abrir el segundo, el primero se cierra o la operación se rechaza.</td>
+</tr>
+<tr>
+<td class="id">RN-22</td>
+<td>El evento abre y cierra solo con sus franjas; el cierre manual dura hasta el final de la franja en curso.</td>
+<td>Prueba con reloj simulado en los bordes.</td>
+</tr>
+<tr>
+<td class="id">RN-23</td>
+<td>El cierre con juegos fuera avisa y exige decisión: esperar o cerrar de todos modos.</td>
+<td>El cierre forzoso deja marca en cada préstamo.</td>
+</tr>
+<tr>
+<td class="id">RN-24</td>
+<td>El catálogo solo se importa si no hay evento abierto ni juegos prestados.</td>
+<td>Importación en plena franja → rechazo con explicación.</td>
+</tr>
+<tr>
+<td class="id">RN-25</td>
+<td>Solo el administrador de evento corrige un préstamo, con motivo y asiento de auditoría.</td>
+<td>Corrección sin motivo → rechazo.</td>
+</tr>
+<tr>
+<td class="id">RN-26</td>
+<td>Los permisos se comprueban en el servidor en cada petición, no en la interfaz.</td>
+<td>Prueba automatizada por rol y ruta.</td>
+</tr>
+<tr>
+<td class="id">RN-27</td>
+<td>La sesión dura 7 días; en las tablets del mostrador caduca a las 12 horas o tras 30 minutos de inactividad.</td>
+<td>Reloj simulado.</td>
+</tr>
+<tr>
+<td class="id">RN-28</td>
+<td>Un evento debe tener al menos un método de acceso activo.</td>
+<td>Guardar los tres desactivados → rechazo.</td>
+</tr>
+<tr>
+<td class="id">RN-29</td>
+<td>El bloqueo de una solicitud se configura por evento, entre 1 y 120 minutos.</td>
+<td>Cambiar el valor y comprobar la caducidad con reloj simulado.</td>
+</tr>
+<tr>
+<td class="id">RN-30</td>
+<td>Dos ejemplares del mismo título son juegos distintos y se prestan por separado.</td>
+<td>Préstamo simultáneo de «Catan» y «Catan (2)»: permitido.</td>
+</tr>
+<tr>
+<td class="id">RN-31</td>
+<td>El panel de sala no muestra nombres, DNI ni identificadores de jugador.</td>
+<td>Revisión de la respuesta del panel.</td>
+</tr>
+<tr>
+<td class="id">RN-32</td>
+<td>El panel de sala es público: no exige sesión y no recibe parámetro de evento.</td>
+<td>Petición sin cookie: responde 200 con el evento abierto.</td>
+</tr>
+<tr>
+<td class="id">RN-33</td>
+<td>Sin evento abierto, el panel no muestra ninguna lista.</td>
+<td>Prueba con todos los eventos cerrados.</td>
+</tr>
+<tr>
+<td class="id">RN-34</td>
+<td>La recuperación de contraseña enseña el correo de destino antes de enviar y la respuesta no revela si la cuenta existe.</td>
+<td>Prueba con correo registrado y no registrado: misma respuesta.</td>
+</tr>
+<tr>
+<td class="id">RN-35</td>
+<td>Al restablecer la contraseña se cierran todas las sesiones del usuario.</td>
+<td>Sesión abierta en otro dispositivo: queda cerrada.</td>
+</tr>
+<tr>
+<td class="id">RN-36</td>
+<td>El enlace de recuperación caduca a los 30 minutos y no se puede usar dos veces.</td>
+<td>Segundo uso: rechazado con el mensaje de ayuda.</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="9-el-evento-franjas-apertura-y-cierre">9. El evento: franjas, apertura y cierre</h1>
+<h2 id="91-dos-estados-no-seis">9.1 Dos estados, no seis</h2>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Significado</th>
+<th style="text-align: center;">Se puede pedir</th>
+<th style="text-align: center;">Se puede devolver</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Abierto</strong></td>
+<td>Hay una franja en curso y no hay cierre manual vigente.</td>
+<td style="text-align: center;">Sí</td>
+<td style="text-align: center;">Sí</td>
+</tr>
+<tr>
+<td><strong>Cerrado</strong></td>
+<td>Fuera de franja, o cerrado a mano por un administrador.</td>
+<td style="text-align: center;">No</td>
+<td style="text-align: center;">Sí</td>
+</tr>
+</tbody>
+</table>
+<p>No hay estados «borrador» ni «archivado». Un evento existe desde que se crea; antes de su primera franja está simplemente cerrado, y así se muestra.</p>
+<h2 id="92-franjas">9.2 Franjas</h2>
+<ul>
+<li>Cada evento tiene una o más franjas: día, hora de inicio y hora de fin, en la zona <code>Europe/Madrid</code>.</li>
+<li>Las franjas no pueden solaparse entre sí ni salir del intervalo del evento.</li>
+<li>El evento se abre en el primer minuto de cada franja y se cierra en el último, sin intervención.</li>
+<li>El cálculo usa el instante UTC guardado; la interfaz muestra la hora local. Se prueba con las fechas de cambio de hora de marzo y octubre.</li>
+<li>El evento define además cuántos minutos queda una solicitud reservando el juego (15 por defecto; configurable entre 1 y 120).</li>
+</ul>
+<h2 id="93-cierre-manual">9.3 Cierre manual</h2>
+<ul>
+<li>Un administrador de evento puede cerrar el evento en cualquier momento, con un motivo opcional.</li>
+<li>El cierre manual se mantiene hasta el final de la franja en curso; la siguiente franja vuelve a abrirlo.</li>
+<li>Un administrador puede reabrir antes de ese final; queda registrado quién lo hizo.</li>
+<li><strong>Solo un evento abierto a la vez.</strong> Si dos franjas de eventos distintos coinciden, la segunda no se abre y el administrador de aplicación ve el aviso para corregir el calendario.</li>
+</ul>
+<h2 id="94-lo-que-ve-el-jugador">9.4 Lo que ve el jugador</h2>
+<ul>
+<li><strong>Evento abierto:</strong> nombre, descripción, instrucciones, próximas franjas, botón «Buscar juego» y su préstamo activo, si lo tiene.</li>
+<li><strong>Evento cerrado:</strong> «Ahora no se pueden coger juegos» y la fecha de la próxima franja. Si tiene un juego en su poder, ve el recordatorio de devolverlo.</li>
+<li><strong>Sin evento:</strong> si no hay ningún evento en curso, el mismo mensaje, sin fecha.</li>
+</ul>
+<h2 id="95-cierre-del-evento">9.5 Cierre del evento</h2>
+<ol>
+<li>El administrador pulsa «Cerrar evento».</li>
+<li>Si no hay juegos fuera, se cierra y se calculan las estadísticas.</li>
+<li>Si los hay, aparece la lista con jugador, juego y hora de salida.</li>
+<li>Puede esperar a que se devuelvan, o cerrar de todos modos: esos préstamos pasan a <code>RETURNED</code> con la marca <code>forced_close</code> y el motivo.</li>
+<li>El evento queda cerrado. El informe se puede consultar y exportar.</li>
+</ol>
+<h2 id="96-operacion-del-mostrador">9.6 Operación del mostrador</h2>
+<table>
+<thead>
+<tr>
+<th>Elemento</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Puestos</td>
+<td>De 4 a 6 tablets, cada una con su número visible.</td>
+</tr>
+<tr>
+<td>Acceso</td>
+<td>Cada controlador entra con su cuenta; la tablet recuerda la sesión 12 horas.</td>
+</tr>
+<tr>
+<td>Turnos</td>
+<td>Relevos cada dos horas; el cambio de turno no exige cerrar sesión.</td>
+</tr>
+<tr>
+<td>Batería</td>
+<td>Cargador por puesto y una batería externa de reserva.</td>
+</tr>
+<tr>
+<td>Red</td>
+<td>Wifi del recinto. Si falla, la operación se detiene y se reanuda al volver; no hay modo sin conexión.</td>
+</tr>
+<tr>
+<td>Imágenes</td>
+<td>Descargadas y revisadas antes del evento (12.4).</td>
+</tr>
+<tr>
+<td>Cartel</td>
+<td>Un cartel por mesa con el QR de la aplicación y tres pasos: regístrate, pide, recoge.</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="10-requisitos-funcionales">10. Requisitos funcionales</h1>
+<p>Cada requisito tiene un criterio de aceptación verificable.</p>
+<h2 id="101-m1-cuentas-y-acceso">10.1 M1 · Cuentas y acceso</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-101</td>
+<td>Registro con correo y contraseña.</td>
+<td>Correo único; contraseña de 10 caracteres como mínimo; alta inmediata sin verificación por correo.</td>
+</tr>
+<tr>
+<td class="id">RF-102</td>
+<td>Acceso con Google y con Facebook.</td>
+<td>Botones visibles solo si el evento los permite; el identificador externo se guarda y no se duplica la cuenta si el correo coincide.</td>
+</tr>
+<tr>
+<td class="id">RF-103</td>
+<td>Configuración de métodos por evento.</td>
+<td>Tres casillas; al menos una activa; la pantalla de acceso muestra solo las permitidas.</td>
+</tr>
+<tr>
+<td class="id">RF-104</td>
+<td>Inicio y cierre de sesión.</td>
+<td>Sesión de 7 días con cookie <code>HttpOnly</code>; botón de salir en todas las pantallas.</td>
+</tr>
+<tr>
+<td class="id">RF-105</td>
+<td>Recuperar la contraseña.</td>
+<td>Enlace de un solo uso por correo, válido 30 minutos; antes de enviarlo, la pantalla enseña la dirección de destino y permite corregirla.</td>
+</tr>
+<tr>
+<td class="id">RF-106</td>
+<td>Perfil: nombre, apellidos, DNI, edad.</td>
+<td>Guardado parcial permitido; para pedir, todo completo.</td>
+</tr>
+<tr>
+<td class="id">RF-107</td>
+<td>DNI enmascarado.</td>
+<td>La API devuelve <code>***123X</code> a cualquier rol distinto del titular.</td>
+</tr>
+<tr>
+<td class="id">RF-108</td>
+<td>Ver el DNI completo.</td>
+<td>Administrador de aplicación en cualquier ficha; administrador de evento solo en el listado de su evento.</td>
+</tr>
+<tr>
+<td class="id">RF-109</td>
+<td>Cambio de contraseña.</td>
+<td>El titular puede cambiarla pidiendo la actual; mínimo 10 caracteres.</td>
+</tr>
+<tr>
+<td class="id">RF-110</td>
+<td>Ayuda en la recuperación.</td>
+<td>La pantalla de recuperación muestra siempre cómo pedir ayuda a un administrador del evento si el correo no es correcto, no llega el enlace o la cuenta es de Google o Facebook.</td>
+</tr>
+<tr>
+<td class="id">RF-110</td>
+<td>Revocación de sesiones al cambiar de rol.</td>
+<td>Las sesiones abiertas de esa cuenta dejan de valer en la siguiente petición.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="102-m2-catalogo">10.2 M2 · Catálogo</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-201</td>
+<td>Importar catálogo desde CSV de BGG.</td>
+<td>Subida, previsualización con altas, cambios y retiradas, y confirmación explícita.</td>
+</tr>
+<tr>
+<td class="id">RF-202</td>
+<td>Bloqueo de la importación.</td>
+<td>Con evento abierto o juegos prestados, la importación se rechaza y explica el motivo.</td>
+</tr>
+<tr>
+<td class="id">RF-203</td>
+<td>Alta manual de juego.</td>
+<td>Para cajas que no están en BGG; <code>bgg_id</code> vacío y marcador de imagen.</td>
+</tr>
+<tr>
+<td class="id">RF-204</td>
+<td>Imágenes del catálogo.</td>
+<td>Cada juego muestra su miniatura; si falta, un marcador con la inicial y el color del estado.</td>
+</tr>
+<tr>
+<td class="id">RF-205</td>
+<td>Búsqueda en el catálogo.</td>
+<td>Por nombre, sin distinguir mayúsculas ni acentos; resultados en menos de 300 ms.</td>
+</tr>
+<tr>
+<td class="id">RF-206</td>
+<td>Retirada y reactivación.</td>
+<td>Retirar exige que no haya préstamo activo; reactivar devuelve el juego al catálogo.</td>
+</tr>
+<tr>
+<td class="id">RF-207</td>
+<td>Bloqueo por evento.</td>
+<td>Con motivo obligatorio; visible en el catálogo del jugador.</td>
+</tr>
+<tr>
+<td class="id">RF-208</td>
+<td>Marcar Prestado a mano.</td>
+<td>Solo administrador de evento; el juego deja de estar disponible sin préstamo asociado.</td>
+</tr>
+<tr>
+<td class="id">RF-209</td>
+<td>Historial por juego.</td>
+<td>Préstamos y cambios de estado, con fecha y autor.</td>
+</tr>
+<tr>
+<td class="id">RF-210</td>
+<td>Exportación del catálogo.</td>
+<td>CSV con identificadores, nombres, años, estado y etiqueta de ejemplar.</td>
+</tr>
+<tr>
+<td class="id">RF-211</td>
+<td>Duplicar un ejemplar.</td>
+<td>Crea un segundo juego con el mismo <code>bgg_id</code> y etiqueta «(2)», con historial propio.</td>
+</tr>
+<tr>
+<td class="id">RF-212</td>
+<td>Descarga de imágenes.</td>
+<td>Lote desde la API de BGG, una petición por segundo, con reintentos y recuento final.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="103-m3-eventos">10.3 M3 · Eventos</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-301</td>
+<td>Crear y editar eventos.</td>
+<td>Nombre, descripción, instrucciones, política de datos, fechas y zona.</td>
+</tr>
+<tr>
+<td class="id">RF-302</td>
+<td>Franjas.</td>
+<td>Sin solapes, dentro del evento, con cálculo correcto en los cambios de hora.</td>
+</tr>
+<tr>
+<td class="id">RF-303</td>
+<td>Apertura automática.</td>
+<td>En el primer minuto de la franja, el evento pasa a Abierto sin intervención.</td>
+</tr>
+<tr>
+<td class="id">RF-304</td>
+<td>Cierre manual y reapertura.</td>
+<td>Con registro de autor y hora; el cierre dura hasta el final de la franja.</td>
+</tr>
+<tr>
+<td class="id">RF-305</td>
+<td>Un solo evento abierto.</td>
+<td>Si otra franja coincide, no se abre y se avisa al administrador.</td>
+</tr>
+<tr>
+<td class="id">RF-306</td>
+<td>Cierre con juegos fuera.</td>
+<td>Lista previa y cierre forzoso con marca en cada préstamo.</td>
+</tr>
+<tr>
+<td class="id">RF-307</td>
+<td>Página pública del evento.</td>
+<td>Nombre, descripción, instrucciones, estado y próximas franjas, sin sesión.</td>
+</tr>
+<tr>
+<td class="id">RF-308</td>
+<td>Añadir y quitar juegos del evento.</td>
+<td>En bloque desde el catálogo, con contador y búsqueda.</td>
+</tr>
+<tr>
+<td class="id">RF-309</td>
+<td>Bloqueo de solicitud configurable.</td>
+<td>Valor entre 1 y 120 minutos, guardado por evento y aplicado a las solicitudes nuevas.</td>
+</tr>
+<tr>
+<td class="id">RF-310</td>
+<td>Límites del panel configurables.</td>
+<td>Elementos por lista entre 1 y 20, guardados por evento.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="104-m4-prestamo">10.4 M4 · Préstamo</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-401</td>
+<td>Solicitar juego.</td>
+<td>Solo disponible; crea el préstamo y devuelve el QR y el código de 6 caracteres.</td>
+</tr>
+<tr>
+<td class="id">RF-402</td>
+<td>Validaciones de solicitud.</td>
+<td>Aplica RN-01 a RN-05 con mensajes que dicen qué hacer.</td>
+</tr>
+<tr>
+<td class="id">RF-403</td>
+<td>Caducidad de la solicitud.</td>
+<td>Al cumplirse el bloqueo configurado pasa a cancelada y el juego queda libre.</td>
+</tr>
+<tr>
+<td class="id">RF-404</td>
+<td>Cancelación por el jugador.</td>
+<td>Botón visible en la pantalla del QR.</td>
+</tr>
+<tr>
+<td class="id">RF-405</td>
+<td>Préstamo activo visible.</td>
+<td>El jugador ve qué tiene, desde cuándo y qué debe hacer para devolverlo.</td>
+</tr>
+<tr>
+<td class="id">RF-406</td>
+<td>Concurrencia.</td>
+<td>Dos entregas simultáneas del mismo juego: una gana, la otra recibe <code>GAME_NOT_AVAILABLE</code>.</td>
+</tr>
+<tr>
+<td class="id">RF-407</td>
+<td>Corrección por administrador.</td>
+<td>Cambia jugador, juego o estado, con motivo, y deja asiento.</td>
+</tr>
+<tr>
+<td class="id">RF-408</td>
+<td>Cierre forzoso.</td>
+<td>Marca los préstamos abiertos como devueltos con <code>forced_close</code>.</td>
+</tr>
+<tr>
+<td class="id">RF-409</td>
+<td>Lista de juegos fuera.</td>
+<td>Por evento, con jugador, juego, hora de salida y tiempo transcurrido.</td>
+</tr>
+<tr>
+<td class="id">RF-410</td>
+<td>Historial del jugador.</td>
+<td>Sus préstamos, con fecha y estado; no ve los de nadie más.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="105-m5-mostrador-y-qr">10.5 M5 · Mostrador y QR</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-501</td>
+<td>Pantalla de mostrador.</td>
+<td>Tres zonas: escanear, préstamo en curso y últimas operaciones; letra grande.</td>
+</tr>
+<tr>
+<td class="id">RF-502</td>
+<td>Escaneo del QR del jugador.</td>
+<td>Con la cámara de la tablet, en menos de 2 segundos, sin teclear.</td>
+</tr>
+<tr>
+<td class="id">RF-503</td>
+<td>Confirmación de entrega.</td>
+<td>Muestra nombre y juego en grande y exige un toque para confirmar.</td>
+</tr>
+<tr>
+<td class="id">RF-504</td>
+<td>Escaneo de la caja para devolver.</td>
+<td>Localiza el préstamo abierto y muestra el tiempo fuera.</td>
+</tr>
+<tr>
+<td class="id">RF-505</td>
+<td>Alternativa manual.</td>
+<td>Búsqueda por nombre y confirmación con la inicial del DNI que el jugador ve en su pantalla.</td>
+</tr>
+<tr>
+<td class="id">RF-506</td>
+<td>Avisos claros.</td>
+<td>QR caducado, juego ya prestado y evento cerrado se explican con una frase y una acción posible.</td>
+</tr>
+<tr>
+<td class="id">RF-507</td>
+<td>Modo alto contraste.</td>
+<td>Legible a plena luz; objetivos de 44 px; sin animaciones.</td>
+</tr>
+<tr>
+<td class="id">RF-508</td>
+<td>Registro de la operación.</td>
+<td>Cada entrega y devolución guarda controlador, puesto y hora del servidor.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="106-m6-administracion">10.6 M6 · Administración</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-601</td>
+<td>Gestión de roles.</td>
+<td>Nombrar y retirar controladores, administradores y analistas, con las reglas de 5.2.</td>
+</tr>
+<tr>
+<td class="id">RF-602</td>
+<td>Auditoría consultable.</td>
+<td>Filtros por actor, acción, entidad y fecha; exportación CSV.</td>
+</tr>
+<tr>
+<td class="id">RF-603</td>
+<td>Verificación de integridad.</td>
+<td>Comando que recorre la cadena de hashes e informa del primer asiento roto.</td>
+</tr>
+<tr>
+<td class="id">RF-604</td>
+<td>Estado del sistema.</td>
+<td>Salud, versión, último acceso y último trabajo programado.</td>
+</tr>
+<tr>
+<td class="id">RF-605</td>
+<td>Ajustes.</td>
+<td>Zona horaria, días de retención del DNI y umbral de préstamo mínima para contar como uso.</td>
+</tr>
+<tr>
+<td class="id">RF-606</td>
+<td>Copia de seguridad manual.</td>
+<td>Botón que genera el fichero de la base de datos para descargar.</td>
+</tr>
+<tr>
+<td class="id">RF-607</td>
+<td>Usuarios del evento con su DNI.</td>
+<td>Lista de quienes han solicitado, con DNI, juegos y horas; apertura y exportación auditadas.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="107-m7-estadisticas">10.7 M7 · Estadísticas</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Criterio de aceptación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RF-701</td>
+<td>Resumen del evento.</td>
+<td>Total de préstamos, jugadores únicos, juegos distintos usados y tiempo medio de uso.</td>
+</tr>
+<tr>
+<td class="id">RF-702</td>
+<td>Ranking de juegos.</td>
+<td>Ordenado por número de préstamos, con tiempo medio.</td>
+</tr>
+<tr>
+<td class="id">RF-703</td>
+<td>Uso por día y franja.</td>
+<td>Tabla y gráfico de barras simple.</td>
+</tr>
+<tr>
+<td class="id">RF-704</td>
+<td>Filtros.</td>
+<td>Por evento, día y franja.</td>
+</tr>
+<tr>
+<td class="id">RF-705</td>
+<td>Exportación.</td>
+<td>CSV del detalle y PDF del resumen.</td>
+</tr>
+<tr>
+<td class="id">RF-706</td>
+<td>Sin datos personales.</td>
+<td>Ninguna consulta de estadísticas devuelve nombres, correos ni DNI.</td>
+</tr>
+<tr>
+<td class="id">RF-707</td>
+<td>Panel de sala público.</td>
+<td>Sin sesión ni parámetro de evento: juegos fuera ordenados por tiempo, más prestados y más jugados, recortados al límite del evento; refresco cada 30 s.</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="11-requisitos-no-funcionales">11. Requisitos no funcionales</h1>
+<p>Proporcionados al tipo de sistema: se pide que funcione bien, no que resista un ataque coordinado ni una auditoría industrial.</p>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Requisito</th>
+<th>Cifra y verificación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">RNF-01</td>
+<td>Latencia.</td>
+<td>p95 ≤ 500 ms en cualquier pantalla, con 50 usuarios simultáneos.</td>
+</tr>
+<tr>
+<td class="id">RNF-02</td>
+<td>Concurrencia.</td>
+<td>50 usuarios y 5 operaciones por segundo sostenidas durante una hora.</td>
+</tr>
+<tr>
+<td class="id">RNF-03</td>
+<td>Capacidad.</td>
+<td>600 juegos, 5.000 préstamos y 10.000 cuentas por evento sin degradación.</td>
+</tr>
+<tr>
+<td class="id">RNF-04</td>
+<td>Disponibilidad.</td>
+<td>Sin compromiso de nivel de servicio. RTO 4 horas y RPO 24 horas: si el servidor muere, se restaura la copia del día.</td>
+</tr>
+<tr>
+<td class="id">RNF-05</td>
+<td>Accesibilidad.</td>
+<td>WCAG 2.2 AA; contraste 7:1 en el mostrador; 44 px de objetivo táctil; zoom al 200 % sin pérdida.</td>
+</tr>
+<tr>
+<td class="id">RNF-06</td>
+<td>Usabilidad.</td>
+<td>Alta ≤ 40 s, solicitud ≤ 15 s, entrega ≤ 20 s, devolución ≤ 20 s.</td>
+</tr>
+<tr>
+<td class="id">RNF-07</td>
+<td>Compatibilidad.</td>
+<td>Últimas dos versiones de Chrome, Edge, Safari y Firefox; iOS 15+, Android 9+.</td>
+</tr>
+<tr>
+<td class="id">RNF-08</td>
+<td>Idioma.</td>
+<td>Interfaz en castellano, textos en un único fichero; código, base de datos y API en inglés.</td>
+</tr>
+<tr>
+<td class="id">RNF-09</td>
+<td>Adaptación.</td>
+<td>De 360 a 1280 px; prioridad vertical en móvil y horizontal en tablet.</td>
+</tr>
+<tr>
+<td class="id">RNF-10</td>
+<td>Arranque.</td>
+<td>Primera carga ≤ 3 s en 4G; siguientes ≤ 1 s desde caché.</td>
+</tr>
+<tr>
+<td class="id">RNF-11</td>
+<td>Peso.</td>
+<td>Página inicial ≤ 250 KB comprimida.</td>
+</tr>
+<tr>
+<td class="id">RNF-12</td>
+<td>Mantenibilidad.</td>
+<td>Módulos ≤ 300 líneas; dominio sin efectos secundarios; cobertura del 90 % (capítulo 16).</td>
+</tr>
+<tr>
+<td class="id">RNF-13</td>
+<td>Observabilidad.</td>
+<td>Logs JSON con identificador de petición; <code>/health</code>; sin datos personales en los logs.</td>
+</tr>
+<tr>
+<td class="id">RNF-14</td>
+<td>Copias.</td>
+<td>Diaria automática, retención 30 días, restauración probada una vez antes del evento.</td>
+</tr>
+<tr>
+<td class="id">RNF-15</td>
+<td>Coste.</td>
+<td>≤ 12 €/mes de infraestructura; todo el software, libre.</td>
+</tr>
+<tr>
+<td class="id">RNF-16</td>
+<td>Tablets modestas.</td>
+<td>Funciona en una tablet de 2019 con 2 GB de RAM.</td>
+</tr>
+<tr>
+<td class="id">RNF-17</td>
+<td>Lectura fácil.</td>
+<td>Instrucciones de tres pasos, con ejemplo visual, sin jerga técnica.</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="12-el-catalogo-de-boardgamegeek-a-la-aplicacion">12. El catálogo: de BoardGameGeek a la aplicación</h1>
+<h2 id="121-lo-que-se-comprobo-antes-de-decidir">12.1 Lo que se comprobó antes de decidir</h2>
+<p>El 23 de noviembre de 2026 se probó el acceso desde un servidor:</p>
+<table>
+<thead>
+<tr>
+<th>Intento</th>
+<th>Resultado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET boardgamegeek.com/collection/user/…</code> con un navegador simulado</td>
+<td><strong>403</strong> de Cloudflare («Attention Required!»)</td>
+</tr>
+<tr>
+<td class="ep"><code>GET boardgamegeek.com/<wbr>profile/<wbr>…</code></td>
+<td><strong>403</strong> de Cloudflare</td>
+</tr>
+<tr>
+<td class="ep"><code>GET boardgamegeek.com/<wbr>xmlapi2/<wbr>collection?username=…</code></td>
+<td><strong>401</strong>: exige token de aplicación registrada</td>
+</tr>
+</tbody>
+</table>
+<p>Conclusión: <strong>el scraping no es viable desde un servidor</strong>. No es cuestión de cortesía ni de frecuencia: Cloudflare bloquea la petición antes de que llegue a la página. Diseñar el sistema alrededor de un scraper sería diseñarlo alrededor de algo que ya no funciona.</p>
+<h2 id="122-tres-caminos-y-el-elegido">12.2 Tres caminos y el elegido</h2>
+<table>
+<thead>
+<tr>
+<th>Camino</th>
+<th>Ventaja</th>
+<th>Inconveniente</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CSV exportado de BGG</strong></td>
+<td>Fiable, sin credenciales, sin límites, dos minutos de trabajo</td>
+<td>Manual y hay que repetirlo cuando cambie la colección</td>
+<td><strong>Principal</strong></td>
+</tr>
+<tr>
+<td>API XML con token</td>
+<td>Automática y con datos completos</td>
+<td>Registro de aplicación, aprobación de días o semanas, límites de uso</td>
+<td>Opcional, ADR-004</td>
+</tr>
+<tr>
+<td>Scraping de la página</td>
+<td>Sin trámite</td>
+<td>Bloqueado por Cloudflare</td>
+<td><strong>Descartado</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="123-importacion-por-csv">12.3 Importación por CSV</h2>
+<p><strong>Cómo se obtiene el fichero:</strong> en BGG, perfil → colección → «Export collection» → CSV. Se descarga y se sube a la aplicación desde «Catálogo → Importar».</p>
+<p><strong>Qué columnas se usan:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Columna del CSV</th>
+<th>Campo</th>
+<th>Obligatoria</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>objectid</code></td>
+<td><code>bgg_id</code></td>
+<td>Sí</td>
+</tr>
+<tr>
+<td><code>objectname</code></td>
+<td><code>name</code></td>
+<td>Sí</td>
+</tr>
+<tr>
+<td><code>yearpublished</code>, si está</td>
+<td><code>year</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>comment</code></td>
+<td><code>notes</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>image_url</code>, si está</td>
+<td><code>image_path</code> (se descarga)</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>El importador acepta cualquier CSV que contenga al menos <code>objectid</code> y <code>objectname</code>; las demás columnas se ignoran salvo <code>image_url</code>, que si viene se usa como origen de la imagen. Así el sistema sigue funcionando aunque BGG cambie el formato de su exportación.</p>
+<p><strong>Proceso:</strong></p>
+<ol>
+<li>Se sube el fichero y se valida: codificación, columnas mínimas, duplicados y filas vacías.</li>
+<li>Se muestra una previsualización con tres grupos: <strong>altas</strong> (no existían), <strong>cambios</strong> (nombre o año distintos) y <strong>desaparecidos</strong> (estaban y ya no están).</li>
+<li>El administrador confirma. Las altas entran como Disponibles para el próximo evento; los desaparecidos pasan a <strong>Retirados</strong> si tienen historial y se ofrecen para eliminar si no lo tienen.</li>
+<li>Cada importación deja un asiento en la auditoría con el recuento de cada grupo.</li>
+</ol>
+<p><strong>Cuándo se puede importar:</strong> solo si no hay evento abierto y no hay ningún juego prestado (RN-24). Es la «ventana de mantenimiento» y no necesita ninguna pantalla adicional: el botón se desactiva y explica por qué.</p>
+<h2 id="124-imagenes">12.4 Imágenes</h2>
+<p>El jugador elige mirando. Sin imagen, un catálogo de 600 nombres es una lista de texto y la decisión se toma por lo que ya conoce. Las imágenes son parte del MVP, no un adorno.</p>
+<p><strong>De dónde salen.</strong> El CSV no las trae. Se obtienen de la API de BGG (<code>/xmlapi2/thing?id=…</code>), que <strong>exige el token de aplicación</strong> del apartado 12.1. Se usa <strong>solo la miniatura</strong> (<code>&lt;thumbnail&gt;</code>): la imagen grande no se descarga en esta versión porque pesa veinte veces más y el catálogo se consulta en un móvil.</p>
+<p><strong>Cómo se descargan:</strong></p>
+<ol>
+<li>El administrador de aplicación pulsa «Descargar imágenes» en «Catálogo → Imágenes».</li>
+<li>El trabajo recorre los juegos con <code>bgg_id</code> y <code>image_status</code> en <code>pending</code> o <code>error</code>, a <strong>una petición por segundo</strong>.</li>
+<li>Guarda el fichero en <code>/data/images/{bgg_id}.{ext}</code> —la extensión sale del tipo de contenido— y marca <code>image_status = ok</code>.</li>
+<li>Si BGG responde que ese juego no tiene imagen, marca <code>none</code> y <strong>no vuelve a intentarlo</strong>. Si falla la red, marca <code>error</code> y lo reintenta en la siguiente pasada.</li>
+<li>Al terminar informa: descargadas, sin imagen, fallidas y juegos sin <code>bgg_id</code>.</li>
+</ol>
+<p>Con 600 juegos son unos diez minutos. El trabajo es reanudable y <strong>solo puede haber uno en marcha</strong>: mientras corre, el botón está deshabilitado y se muestra el progreso. Se puede lanzar con el evento abierto, porque no toca el estado de ningún juego: solo escribe ficheros y marcas.</p>
+<p><strong>Duplicados.</strong> Dos ejemplares del mismo título comparten <code>bgg_id</code>, así que <strong>comparten fichero</strong>: se descarga una vez y las dos fichas apuntan a la misma imagen.</p>
+<p><strong>Si no hay token o la descarga falla:</strong> el juego se muestra con un marcador —la inicial del título sobre el color del estado—. El sistema funciona; se pierde la ayuda visual, no la operación.</p>
+<p><strong>Respaldo manual.</strong> El importador acepta una columna opcional <code>image_url</code> en el CSV. Si viene, se descarga al mismo sitio que las demás —nunca se enlaza en caliente— y pasa por la misma validación de host que la API. Si la URL falla, <code>image_status = error</code> y marcador. Sirve para una colección pequeña o para imágenes propias.</p>
+<p><strong>En el servidor</strong> no se redimensiona ni se convierte nada: se sirve el fichero tal cual, con caché de un año en el navegador. Cada imagen lleva <code>alt</code> con el nombre del juego y, en la ficha, la atribución a BoardGameGeek.</p>
+<p><strong>Limpieza.</strong> Al eliminar un juego se borra su imagen si ningún otro ejemplar la usa. Un trabajo semanal retira de <code>/data/images</code> los ficheros que no referencia ningún juego.</p>
+<h2 id="125-ejemplares-duplicados">12.5 Ejemplares duplicados</h2>
+<ul>
+<li>Si la exportación trae dos filas con el mismo <code>objectid</code>, se crean <strong>dos juegos</strong> con el mismo <code>bgg_id</code>: «Catan» y «Catan (2)».</li>
+<li>Cada uno tiene su historial, su estado y su préstamo. Se pueden prestar los dos a la vez, a personas distintas.</li>
+<li>El botón «Duplicar ejemplar» crea una copia desde la ficha, para cuando la segunda caja no está en BGG o se añade después.</li>
+<li>En el catálogo del jugador se ven como dos fichas con la misma imagen y distinto sufijo.</li>
+</ul>
+<h2 id="126-exportaciones">12.6 Exportaciones</h2>
+<table>
+<thead>
+<tr>
+<th>Formato</th>
+<th>Contenido</th>
+<th>Para qué</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CSV de catálogo</td>
+<td>Identificador, nombre, año, estado y etiqueta de ejemplar</td>
+<td>Respaldo y revisión en hoja de cálculo</td>
+</tr>
+<tr>
+<td>CSV de préstamos</td>
+<td>Juego, jugador seudonimizado, horas, estado, cierre</td>
+<td>Análisis propio</td>
+</tr>
+<tr>
+<td>PDF de resumen</td>
+<td>Métricas y gráficos del evento</td>
+<td>Memoria de la asociación</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="13-datos-personales-y-privacidad">13. Datos personales y privacidad</h1>
+<h2 id="131-que-se-guarda-y-para-que">13.1 Qué se guarda y para qué</h2>
+<table>
+<thead>
+<tr>
+<th>Dato</th>
+<th>Para qué</th>
+<th>Base legal</th>
+<th>Cuánto tiempo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Correo</td>
+<td>Identificar la cuenta</td>
+<td>Ejecución del servicio</td>
+<td>Mientras la cuenta exista</td>
+</tr>
+<tr>
+<td>Nombre y apellidos</td>
+<td>Saber quién tiene el juego</td>
+<td>Ejecución del servicio</td>
+<td>Mientras la cuenta exista</td>
+</tr>
+<tr>
+<td>DNI, NIF o NIE</td>
+<td>Responsabilizarse del préstamo</td>
+<td>Interés legítimo en proteger el patrimonio</td>
+<td>Mientras exista la cuenta</td>
+</tr>
+<tr>
+<td>Declaración de mayoría de edad</td>
+<td>Cumplir la restricción de edad</td>
+<td>Obligación legal</td>
+<td>Mientras la cuenta exista</td>
+</tr>
+<tr>
+<td>Historial de préstamos</td>
+<td>Estadísticas y trazabilidad</td>
+<td>Interés legítimo</td>
+<td>Indefinido, seudonimizado</td>
+</tr>
+<tr>
+<td>Enlace de recuperación</td>
+<td>Demostrar que quien restablece es el titular</td>
+<td>Ejecución del servicio</td>
+<td>30 minutos</td>
+</tr>
+</tbody>
+</table>
+<p>No se piden teléfono, dirección ni fecha de nacimiento. No hay perfilado ni decisiones automáticas.</p>
+<h2 id="132-reglas">13.2 Reglas</h2>
+<ol>
+<li><strong>Solo mayores de edad.</strong> La declaración es una casilla que se guarda con fecha. Si el controlador tiene duda razonable, puede negar la entrega; el sistema no verifica documentos.</li>
+<li><strong>DNI enmascarado al controlador.</strong> En el mostrador se muestra <code>***123X</code>; el controlador no necesita más. El administrador de evento sí ve el DNI completo en la pantalla de usuarios del evento (5.5), que deja asiento cada vez que se abre o se exporta. Su titular lo ve entero en su perfil.</li>
+<li><strong>DNI cifrado.</strong> Se guarda cifrado con AES-256-GCM y una clave en el entorno del servidor; el valor enmascarado se guarda aparte para poder mostrarlo sin descifrar.</li>
+<li><strong>Conservación.</strong> Los datos se guardan mientras exista la cuenta y se borran con ella o cuando su titular lo pida (RN-20).</li>
+<li><strong>Supresión de cuenta.</strong> El titular puede pedirla; se borran correo, nombre y DNI y los préstamos quedan asociados a «Cuenta eliminada». Se conservan las cifras, no la persona.</li>
+<li><strong>Sin cesiones.</strong> No se comparte nada con terceros. El VPS está en la Unión Europea y hay contrato de encargado con el proveedor.</li>
+<li><strong>Google y Facebook.</strong> Si el evento permite esos accesos, el usuario decide usarlos; la pantalla lo explica antes de pulsar. Son transferencias internacionales del proveedor correspondiente y están cubiertas por sus propias garantías.</li>
+<li><strong>Derechos.</strong> Acceso, rectificación, supresión y portabilidad se atienden desde el perfil o por escrito; plazo máximo un mes. La exportación de los datos de una cuenta es un botón, en JSON.</li>
+</ol>
+<h2 id="133-lo-que-no-se-hace">13.3 Lo que no se hace</h2>
+<ul>
+<li>No se guarda la IP en la auditoría.</li>
+<li>No se guardan los datos de la tarjeta ni pagos: no hay pagos.</li>
+<li>No se hacen fotos ni se pide documento escaneado.</li>
+<li>No se usan cookies de analítica ni de publicidad.</li>
+<li>No hay correos de verificación, de aviso ni de mercadotecnia. <strong>El único correo que sale del sistema es el enlace de recuperación de contraseña</strong> (13.4).</li>
+</ul>
+<h2 id="134-el-unico-correo-que-sale">13.4 El único correo que sale</h2>
+<ul>
+<li><strong>Qué se envía.</strong> Un enlace de un solo uso para restablecer la contraseña. Nada más: ni verificación de cuenta, ni avisos, ni resúmenes.</li>
+<li><strong>Cómo se envía.</strong> SMTP de un proveedor transaccional desde un subdominio propio (<code>mail.…</code>), con <strong>SPF, DKIM y DMARC</strong> publicados. Sin esos registros el correo cae en spam y el usuario se queda fuera.</li>
+<li><strong>Qué se mide.</strong> Nada. Sin píxeles, sin enlaces de seguimiento, sin registrar aperturas. Solo se anota si el envío falló, para poder avisar en pantalla.</li>
+<li><strong>Rebotes.</strong> Un rebote duro deja el correo marcado como no válido y la pantalla de recuperación lo dice: «No hemos podido entregar el correo; pide ayuda a un administrador».</li>
+<li><strong>Contenido.</strong> El enlace caduca en 30 minutos, se guarda hasheado y sirve una sola vez. Al usarlo se cierran todas las sesiones.</li>
+<li><strong>Retención.</strong> El enlace caducado se borra en el trabajo horario. Del envío no queda más rastro que el resultado (entregado o fallido).</li>
+</ul>
+<h1 class="chapter" id="14-seguridad">14. Seguridad</h1>
+<h2 id="141-nivel-objetivo">14.1 Nivel objetivo</h2>
+<p>El sistema no es crítico y no maneja dinero. El objetivo es concreto: <strong>que nadie pueda hacerse pasar por otro, ver un DNI ajeno ni alterar el registro sin dejar rastro</strong>. Todo lo demás es proporcionado.</p>
+<h2 id="142-especificacion">14.2 Especificación</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Control</th>
+<th>Cómo se implementa</th>
+<th>Cómo se verifica</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">SEC-01</td>
+<td>Contraseñas</td>
+<td>scrypt con <code>N=2^17</code>, <code>r=8</code>, <code>p=1</code>, sal de 32 bytes y 64 bytes de salida; comparación en tiempo constante</td>
+<td>Prueba de hash y de verificación; nunca aparece la contraseña en logs</td>
+</tr>
+<tr>
+<td class="id">SEC-02</td>
+<td>Sesiones</td>
+<td>Token aleatorio de 256 bits, guardado como hash en <code>sessions</code>; cookie <code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code>; 7 días</td>
+<td>Prueba de robo de cookie sin <code>HttpOnly</code>: no aplica; prueba de revocación</td>
+</tr>
+<tr>
+<td class="id">SEC-03</td>
+<td>OAuth</td>
+<td><code>state</code> de un solo uso y PKCE; se valida el emisor, el público y el correo verificado</td>
+<td>Prueba con <code>state</code> repetido y con token de otro cliente</td>
+</tr>
+<tr>
+<td class="id">SEC-04</td>
+<td>Autorización</td>
+<td>Middleware que deniega por defecto; cada ruta declara roles y ámbito</td>
+<td>Matriz de permisos automatizada: cada rol contra cada ruta</td>
+</tr>
+<tr>
+<td class="id">SEC-05</td>
+<td>Entrada</td>
+<td>Esquema zod por ruta; campos desconocidos rechazados; límites de longitud</td>
+<td>Pruebas de contrato con casos inválidos</td>
+</tr>
+<tr>
+<td class="id">SEC-06</td>
+<td>Fuerza bruta</td>
+<td>5 intentos por minuto por IP y correo; retardo creciente; mensaje genérico</td>
+<td>Prueba de 20 intentos: bloqueo y mensaje sin filtrar si el correo existe</td>
+</tr>
+<tr>
+<td class="id">SEC-07</td>
+<td>Cabeceras</td>
+<td>CSP <code>default-src 'self'</code>; <code>frame-ancestors 'none'</code>; HSTS; <code>nosniff</code>; <code>Referrer-Policy: no-referrer</code></td>
+<td>Comprobación en CI sobre la respuesta real</td>
+</tr>
+<tr>
+<td class="id">SEC-08</td>
+<td>XSS</td>
+<td>snabbdom crea nodos, no inyecta HTML; prohibido <code>innerHTML</code></td>
+<td>Regla de lint y revisión</td>
+</tr>
+<tr>
+<td class="id">SEC-09</td>
+<td>CSRF</td>
+<td><code>SameSite=Lax</code> y token de doble envío en formularios sensibles</td>
+<td>Prueba de petición cruzada</td>
+</tr>
+<tr>
+<td class="id">SEC-10</td>
+<td>Secretos</td>
+<td>Variables de entorno; nunca en el repositorio; rotación documentada</td>
+<td>Revisión de secretos en CI</td>
+</tr>
+<tr>
+<td class="id">SEC-11</td>
+<td>Dependencias</td>
+<td><code>npm audit</code> en CI; bloqueo de vulnerabilidades altas; versiones fijadas</td>
+<td>Etapa de CI obligatoria</td>
+</tr>
+<tr>
+<td class="id">SEC-12</td>
+<td>QR</td>
+<td>Token de 128 bits, guardado como hash, de un solo uso y caducidad según el evento</td>
+<td>Prueba de reutilización y de caducidad</td>
+</tr>
+<tr>
+<td class="id">SEC-13</td>
+<td>Auditoría</td>
+<td>Solo anexión, con hash encadenado; verificación por comando</td>
+<td>Comando <code>audit:verify</code> que detecta una fila alterada</td>
+</tr>
+<tr>
+<td class="id">SEC-14</td>
+<td>Copias</td>
+<td>Cifradas con age; fuera del servidor</td>
+<td>Restauración cronometrada antes del evento</td>
+</tr>
+<tr>
+<td class="id">SEC-15</td>
+<td>Errores</td>
+<td>Mensajes que no revelan si un correo existe ni detalles internos</td>
+<td>Revisión de las respuestas de error</td>
+</tr>
+<tr>
+<td class="id">SEC-16</td>
+<td>Logs</td>
+<td>JSON con identificador de petición; sin correo, DNI, token ni contraseña</td>
+<td>Revisión de una muestra de logs en CI</td>
+</tr>
+<tr>
+<td class="id">SEC-17</td>
+<td>Recuperación</td>
+<td>Enlace de 128 bits guardado como hash, un solo uso, 30 minutos, límite de 3 peticiones por hora y cuenta, y misma respuesta exista o no el correo</td>
+<td>Prueba de reutilización, caducidad y de dos correos con la misma respuesta</td>
+</tr>
+<tr>
+<td class="id">SEC-17</td>
+<td>Descarga de imágenes</td>
+<td>Solo se aceptan direcciones cuyo host sea <code>cf.geekdo-images.com</code>; límite de tamaño y de redirecciones; sin seguir a otros dominios</td>
+<td>Prueba con una URL externa: rechazada</td>
+</tr>
+</tbody>
+</table>
+<h2 id="143-lo-que-queda-fuera-y-por-que">14.3 Lo que queda fuera y por qué</h2>
+<table>
+<thead>
+<tr>
+<th>No se hace</th>
+<th>Motivo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Doble factor</td>
+<td>Añade fricción a voluntarios y a un evento de un fin de semana; el riesgo no lo justifica.</td>
+</tr>
+<tr>
+<td>Cifrado de toda la base de datos</td>
+<td>Solo el DNI es sensible; el resto se protege con permisos y copias cifradas.</td>
+</tr>
+<tr>
+<td>WAF o protección anti-DDoS dedicada</td>
+<td>El VPS y el proxy ya absorben lo razonable para este tamaño.</td>
+</tr>
+<tr>
+<td>Auditoría de seguridad externa</td>
+<td>Coste desproporcionado; se sustituye por la matriz de permisos automatizada y la revisión de dependencias.</td>
+</tr>
+<tr>
+<td>Registro de IP</td>
+<td>No aporta para el objetivo y complica el cumplimiento.</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="15-arquitectura">15. Arquitectura</h1>
+<h2 id="151-vista-general">15.1 Vista general</h2>
+<pre><code>   Móvil del jugador            Tablet del mostrador
+   (PWA instalable)             (PWA, modo mostrador)
+          │                              │
+          └────────── HTTPS ─────────────┘
+                         │
+                ┌────────▼─────────┐
+                │  Hono (Node 24)  │  API REST + estáticos
+                │  rutas · zod     │
+                └────────┬─────────┘
+                         │
+        ┌────────────────┼─────────────────┐
+        │                │                 │
+  ┌─────▼─────┐   ┌──────▼──────┐   ┌──────▼───────┐
+  │  Dominio  │   │  Consultas  │   │  Adaptadores │
+  │  (puro)   │   │  (lectura)  │   │  CSV, imágs. │
+  └─────┬─────┘   └──────┬──────┘   └──────────────┘
+        └────────┬───────┘
+          ┌──────▼───────┐
+          │   SQLite     │  datos + auditoría
+          │   (WAL)      │
+          └──────────────┘
+</code></pre>
+<p>Un proceso, un contenedor, un fichero de base de datos y un proxy con TLS. No hay servidor de base de datos que administrar, ni colas, ni microservicios.</p>
+<h2 id="152-eleccion-de-la-base-de-datos">15.2 Elección de la base de datos</h2>
+<p>Pediste el análisis. Estos son los números del sistema y la comparación:</p>
+<p><strong>Volumen real:</strong> 600 juegos, 10.000 cuentas, 5.000 préstamos por evento, 10.000 asientos de auditoría. En total, menos de 50 MB al año. <strong>Escrituras:</strong> 5 por segundo en el peor minuto. <strong>Lecturas:</strong> unas 50 por segundo.</p>
+<table>
+<thead>
+<tr>
+<th>Criterio</th>
+<th>SQLite</th>
+<th>PostgreSQL</th>
+<th>MariaDB</th>
+<th>MongoDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Instalación y operación</td>
+<td>Ninguna: un fichero</td>
+<td>Servidor, usuarios, <code>VACUUM</code>, actualizaciones</td>
+<td>Servidor y configuración</td>
+<td>Servidor y configuración</td>
+</tr>
+<tr>
+<td>Copia de seguridad</td>
+<td>Copiar un fichero o <code>VACUUM INTO</code></td>
+<td><code>pg_dump</code> y restauración</td>
+<td><code>mysqldump</code></td>
+<td><code>mongodump</code></td>
+</tr>
+<tr>
+<td>Concurrencia de escritura</td>
+<td>Un escritor a la vez; lecturas simultáneas con WAL</td>
+<td>Muchos escritores</td>
+<td>Muchos escritores</td>
+<td>Muchos escritores</td>
+</tr>
+<tr>
+<td>¿Aguanta este volumen?</td>
+<td>Sí, con dos órdenes de magnitud de margen</td>
+<td>Sí, de sobra</td>
+<td>Sí, de sobra</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>Coste de mantenimiento</td>
+<td>Mínimo</td>
+<td>Medio</td>
+<td>Medio</td>
+<td>Medio</td>
+</tr>
+<tr>
+<td>Transacciones y SQL</td>
+<td>Sí</td>
+<td>Sí</td>
+<td>Sí</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Encaje con el proyecto</td>
+<td><strong>Alto</strong></td>
+<td>Bajo: sobredimensionado</td>
+<td>Bajo</td>
+<td>Bajo: no hay documentos</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Decisión: SQLite en modo WAL.</strong> Con un solo evento abierto a la vez y 5 escrituras por segundo, el límite de un escritor no se toca nunca. A cambio, el sysop no administra ningún servidor de base de datos, la copia es copiar un fichero y la instalación es un contenedor.</p>
+<p><strong>Salida si el sistema crece:</strong> todo el acceso a datos está detrás de un repositorio con SQL estándar; migrar a PostgreSQL es cambiar el adaptador y el <code>docker-compose</code>, no la lógica. Se revisará si algún día hay varios eventos simultáneos o más de 50 escrituras por segundo sostenidas.</p>
+<h2 id="153-event-sourcing-por-que-no">15.3 Event Sourcing: por qué no</h2>
+<p>El documento original lo pedía. Con el alcance de esta versión no se sostiene:</p>
+<ul>
+<li>Hay <strong>un solo agregado con reglas</strong> (el préstamo) y tres transiciones.</li>
+<li>No se necesita reconstruir estados pasados: el historial se lee de la propia tabla de préstamos.</li>
+<li>5.000 préstamos por evento generan 15.000 asientos que no aportan nada frente a 5.000 filas con dos marcas de tiempo.</li>
+<li>El coste no es escribir el libro: es mantener proyecciones, migraciones por reconstrucción y un modelo mental que un voluntario no va a tener en la cabeza en marzo.</li>
+</ul>
+<p><strong>Lo que se conserva del espíritu original:</strong> una tabla de auditoría de solo anexión, con hash encadenado, que registra cada operación con su actor y su hora, y que no se puede alterar sin que se note. Es el 10 % del coste y cubre el 100 % de la necesidad real: saber quién hizo qué.</p>
+<p>Si en el futuro se quiere Event Sourcing de verdad, las reglas del capítulo 8 no cambian: solo cambia dónde se guardan los hechos.</p>
+<h2 id="154-stack">15.4 Stack</h2>
+<table>
+<thead>
+<tr>
+<th>Pieza</th>
+<th>Elección</th>
+<th>Por qué</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runtime</td>
+<td>Node.js 24 LTS</td>
+<td>Estable, en soporte, sin sorpresas</td>
+</tr>
+<tr>
+<td>Correo</td>
+<td><strong>SMTP del proveedor</strong></td>
+<td>Solo recuperación; sin SDK propio, con el transporte que ya trae el runtime o <code>nodemailer</code></td>
+</tr>
+<tr>
+<td>HTTP</td>
+<td><strong>Hono 4</strong></td>
+<td>Funciones y composición, sin clases; validación con zod; 14 kB</td>
+</tr>
+<tr>
+<td>Validación</td>
+<td>zod</td>
+<td>Un esquema por ruta; el mismo esquema valida y documenta</td>
+</tr>
+<tr>
+<td>Base de datos</td>
+<td><strong><code>node:sqlite</code></strong> (incluido en Node)</td>
+<td>Sin dependencias nativas ni compilación en Docker</td>
+</tr>
+<tr>
+<td>Contraseñas</td>
+<td><code>node:crypto</code> scrypt</td>
+<td>Sin dependencias nativas; algoritmo recomendado</td>
+</tr>
+<tr>
+<td>Interfaz</td>
+<td><strong>snabbdom</strong> + <strong>Fomantic-UI</strong></td>
+<td>Nodos virtuales y el lenguaje visual pedido, sin jQuery en nuestro código</td>
+</tr>
+<tr>
+<td>Empaquetado</td>
+<td>esbuild</td>
+<td>Un comando, sin configuración</td>
+</tr>
+<tr>
+<td>Pruebas</td>
+<td><code>node:test</code> + <code>c8</code></td>
+<td>Incluidos en Node; sin framework que mantener</td>
+</tr>
+<tr>
+<td>Navegador de pruebas</td>
+<td>Playwright</td>
+<td>Cinco flujos de extremo a extremo</td>
+</tr>
+<tr>
+<td>Proxy</td>
+<td>Caddy</td>
+<td>TLS automático y cero configuración</td>
+</tr>
+</tbody>
+</table>
+<h2 id="155-comparativa-de-framework-http">15.5 Comparativa de framework HTTP</h2>
+<table>
+<thead>
+<tr>
+<th>Criterio</th>
+<th>Express 5</th>
+<th>Fastify 5</th>
+<th>Hono 4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Estilo</td>
+<td>Callbacks y middleware con estado</td>
+<td>Plugins encapsulados, decoradores</td>
+<td>Funciones puras, composición</td>
+</tr>
+<tr>
+<td>¿Necesita <code>new</code> o <code>this</code>?</td>
+<td>No, pero su ecosistema sí lo usa</td>
+<td>No, pero los plugins usan objetos con estado</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Validación integrada</td>
+<td>No</td>
+<td>Sí (JSON Schema)</td>
+<td>Sí (zod)</td>
+</tr>
+<tr>
+<td>Tamaño</td>
+<td>Medio</td>
+<td>Medio</td>
+<td>Muy pequeño</td>
+</tr>
+<tr>
+<td>Encaje con «sin clases»</td>
+<td>Bajo</td>
+<td>Medio</td>
+<td><strong>Alto</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Se elige Hono. Express sigue siendo válido, pero su modelo de middleware obliga a estado compartido y a comprobar a mano lo que aquí se declara en el esquema.</p>
+<h2 id="156-estructura-del-codigo">15.6 Estructura del código</h2>
+<pre><code>src/
+  domain/          reglas puras: estados, préstamo, evento, juego
+  app/             casos de uso: solicitar, entregar, devolver, cerrar
+  infra/           sqlite, repositorios, csv, imágenes, correo, hash, sesiones
+  http/            rutas Hono, esquemas zod, middleware de permisos
+  web/             interfaz: vistas snabbdom, estilos, textos es.json
+  bootstrap/       arranque y composición (único sitio con efectos)
+test/
+</code></pre>
+<p>Regla de dependencia: <code>domain</code> no importa nada; <code>app</code> importa <code>domain</code>; <code>infra</code> y <code>http</code> importan <code>app</code>; <code>bootstrap</code> importa todo. <code>class</code>, <code>new</code> y <code>this</code> están prohibidos en <code>domain</code> y <code>app</code>, y se comprueba con lint.</p>
+<h2 id="157-despliegue">15.7 Despliegue</h2>
+<table>
+<thead>
+<tr>
+<th>Pieza</th>
+<th>Decisión</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contenedores</td>
+<td><code>app</code> (Node 24) y <code>proxy</code> (Caddy). La base de datos es un volumen.</td>
+</tr>
+<tr>
+<td>Servidor</td>
+<td>VPS de 1 vCPU y 2 GB, 6–10 €/mes</td>
+</tr>
+<tr>
+<td>Configuración</td>
+<td>Variables de entorno en <code>.env</code>, fuera del repositorio</td>
+</tr>
+<tr>
+<td>Datos</td>
+<td><strong>Volumen Docker fuera del contenedor</strong>: <code>/srv/ludoteca/data</code> montado en <code>/data</code>. Dentro viven <code>ludoteca.db</code>, <code>ludoteca.db-wal</code> y <code>images/</code>. Recrear o actualizar el contenedor no toca el dato.</td>
+</tr>
+<tr>
+<td>Copias</td>
+<td><code>VACUUM INTO</code> diario sobre <code>/data</code>, cifrado con age, descargado a almacenamiento externo</td>
+</tr>
+<tr>
+<td>CI/CD</td>
+<td>Lint, tipos, pruebas, cobertura, contrato, e2e; imagen Docker al etiquetar</td>
+</tr>
+<tr>
+<td>Monitorización</td>
+<td><code>/health</code> cada 5 minutos desde fuera; el fallo se ve en el panel del administrador</td>
+</tr>
+</tbody>
+</table>
+<h2 id="158-decisiones-de-arquitectura">15.8 Decisiones de arquitectura</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Decisión</th>
+<th>Alternativa descartada</th>
+<th>Consecuencia</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">ADR-001</td>
+<td>Tablas de estado + auditoría encadenada</td>
+<td>Event Sourcing con CQRS</td>
+<td>Menos código y menos mantenimiento; se pierde la reconstrucción temporal, que no se necesita</td>
+</tr>
+<tr>
+<td class="id">ADR-002</td>
+<td>SQLite con WAL</td>
+<td>PostgreSQL</td>
+<td>Un fichero, sin servidor; techo de escritura más bajo, lejos del uso real</td>
+</tr>
+<tr>
+<td class="id">ADR-003</td>
+<td>Hono</td>
+<td>Express, Fastify</td>
+<td>Sin clases ni estado compartido; ecosistema más pequeño</td>
+</tr>
+<tr>
+<td class="id">ADR-004</td>
+<td>CSV de BGG como vía principal</td>
+<td>Scraping o API</td>
+<td>Fiable y sin trámite; manual y sin imágenes</td>
+</tr>
+<tr>
+<td class="id">ADR-005</td>
+<td>Fomantic-UI</td>
+<td>Semantic UI</td>
+<td>Mantenimiento; mismas clases</td>
+</tr>
+<tr>
+<td class="id">ADR-006</td>
+<td>ESLint plano con reglas de Google</td>
+<td><code>eslint-config-google</code></td>
+<td>El paquete oficial está archivado; asumimos las reglas</td>
+</tr>
+<tr>
+<td class="id">ADR-007</td>
+<td>JavaScript con JSDoc y <code>checkJs</code></td>
+<td>TypeScript</td>
+<td>Sin compilación; menos garantías de tipo</td>
+</tr>
+<tr>
+<td class="id">ADR-008</td>
+<td>Sesiones opacas en base de datos</td>
+<td>JWT</td>
+<td>Revocación inmediata; una consulta más por petición</td>
+</tr>
+<tr>
+<td class="id">ADR-009</td>
+<td>scrypt de <code>node:crypto</code></td>
+<td>argon2id</td>
+<td>Sin dependencia nativa; configuración equivalente en seguridad práctica</td>
+</tr>
+<tr>
+<td class="id">ADR-010</td>
+<td>Token QR aleatorio guardado como hash</td>
+<td>JWT firmado en el QR</td>
+<td>Un solo uso y caducidad reales; una fila por solicitud</td>
+</tr>
+<tr>
+<td class="id">ADR-011</td>
+<td>Una caja, un registro</td>
+<td>Un registro con contador</td>
+<td>Trazabilidad por ejemplar; los duplicados se numeran</td>
+</tr>
+<tr>
+<td class="id">ADR-012</td>
+<td>Sin modo sin conexión</td>
+<td>PWA con cola local</td>
+<td>Mucho menos código; se asume red en el recinto</td>
+</tr>
+<tr>
+<td class="id">ADR-013</td>
+<td>Imágenes por API de BGG con token</td>
+<td>CSV ampliado o sin imágenes</td>
+<td>Requiere el trámite de registro; a cambio, el catálogo es reconocible de un vistazo</td>
+</tr>
+<tr>
+<td class="id">ADR-014</td>
+<td>Sin etiquetas QR en las cajas</td>
+<td>Etiqueta por caja</td>
+<td>Ahorra horas de trabajo y depende de algo que hoy no existe; la devolución va por el jugador</td>
+</tr>
+<tr>
+<td class="id">ADR-015</td>
+<td>Correo solo para recuperar la contraseña</td>
+<td>Sin correo o correo completo</td>
+<td>Desbloquea las cuentas locales sin depender de un rebote; asume un proveedor y tres registros DNS</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="16-calidad-y-pruebas">16. Calidad y pruebas</h1>
+<h2 id="161-como-se-trabaja">16.1 Cómo se trabaja</h2>
+<p>Ciclo rojo-verde-refactor: primero la prueba que falla, después el código que la hace pasar, después la limpieza. No se acepta código de aplicación sin prueba; se exceptúan configuración, estilos y textos.</p>
+<h2 id="162-cobertura">16.2 Cobertura</h2>
+<p>El criterio es el que pediste: <strong>el 90 % del código debe estar cubierto al menos por una prueba</strong>. Se mide sobre líneas y se aplica como puerta de integración continua.</p>
+<table>
+<thead>
+<tr>
+<th>Ámbito</th>
+<th>Umbral</th>
+<th>Nota</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/domain</code></td>
+<td>95 %</td>
+<td>Aquí están las reglas; un fallo cuesta un juego</td>
+</tr>
+<tr>
+<td><code>src/app</code></td>
+<td>90 %</td>
+<td>Casos de uso</td>
+</tr>
+<tr>
+<td><code>src/http</code></td>
+<td>85 %</td>
+<td>Rutas y permisos, con pruebas de contrato</td>
+</tr>
+<tr>
+<td><code>src/infra</code></td>
+<td>80 %</td>
+<td>Repositorios contra una base SQLite real</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>90 %</strong></td>
+<td>Puerta de CI</td>
+</tr>
+</tbody>
+</table>
+<p>No se persigue el 100 %: las ramas de error de la red y de los ficheros se prueban con dobles y no aportan cobertura real.</p>
+<h2 id="163-niveles">16.3 Niveles</h2>
+<table>
+<thead>
+<tr>
+<th>Nivel</th>
+<th>Qué cubre</th>
+<th>Herramienta</th>
+<th>Cantidad orientativa</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Unidad</td>
+<td>Estados, reglas, cálculo de franjas, máscara de DNI</td>
+<td><code>node:test</code></td>
+<td>180</td>
+</tr>
+<tr>
+<td>Integración</td>
+<td>Repositorios, transacciones, auditoría, QR de un solo uso</td>
+<td><code>node:test</code> + SQLite en memoria o fichero temporal</td>
+<td>50</td>
+</tr>
+<tr>
+<td>Contrato</td>
+<td>Cada ruta contra el <code>openapi.yaml</code></td>
+<td>Schemathesis</td>
+<td>Todas</td>
+</tr>
+<tr>
+<td>Extremo a extremo</td>
+<td>Registro, solicitud, entrega, devolución, cierre</td>
+<td>Playwright</td>
+<td>5</td>
+</tr>
+<tr>
+<td>Carga</td>
+<td>Hora punta y conflicto de entregas</td>
+<td>k6</td>
+<td>2 escenarios</td>
+</tr>
+<tr>
+<td>Usabilidad</td>
+<td>Cinco personas reales</td>
+<td>Protocolo manual</td>
+<td>5</td>
+</tr>
+</tbody>
+</table>
+<p>Los cinco flujos de extremo a extremo son el corazón: si uno falla, no se despliega.</p>
+<h2 id="164-pruebas-que-no-se-pueden-saltar">16.4 Pruebas que no se pueden saltar</h2>
+<ol>
+<li>Dos entregas simultáneas del mismo juego: una gana y la otra recibe <code>GAME_NOT_AVAILABLE</code>.</li>
+<li>QR usado dos veces: el segundo intento se rechaza.</li>
+<li>QR caducado: rechazado.</li>
+<li>Devolución con el evento cerrado: aceptada.</li>
+<li>Solicitud con evento cerrado: rechazada con la próxima franja.</li>
+<li>Jugador con préstamo activo que pide otro: rechazado con el préstamo que debe devolver.</li>
+<li>Cambio de hora de marzo y de octubre: las franjas abren una sola vez.</li>
+<li>Dos eventos con franjas solapadas: solo uno se abre.</li>
+<li>Importación con juego prestado: bloqueada.</li>
+<li>Lectura del DNI por un controlador: <code>***123X</code>.</li>
+<li>Corrección de préstamo sin motivo: rechazada.</li>
+<li>Cadena de auditoría alterada: el comando de verificación lo detecta.</li>
+</ol>
+<h2 id="165-lint-que-hace-cumplir-la-arquitectura">16.5 Lint que hace cumplir la arquitectura</h2>
+<table>
+<thead>
+<tr>
+<th>Regla</th>
+<th>Impide</th>
+<th>Ámbito</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no-restricted-syntax</code> (<code>ClassDeclaration</code>)</td>
+<td>Clases</td>
+<td><code>src/domain</code>, <code>src/app</code></td>
+</tr>
+<tr>
+<td><code>no-restricted-syntax</code> (<code>NewExpression</code>)</td>
+<td><code>new</code></td>
+<td><code>src/domain</code>, <code>src/app</code></td>
+</tr>
+<tr>
+<td><code>no-restricted-syntax</code> (<code>ThisExpression</code>)</td>
+<td><code>this</code></td>
+<td><code>src/domain</code>, <code>src/app</code></td>
+</tr>
+<tr>
+<td><code>no-restricted-imports</code></td>
+<td>Frameworks y SQL en el núcleo</td>
+<td><code>src/domain</code></td>
+</tr>
+<tr>
+<td><code>no-restricted-properties</code> (<code>innerHTML</code>)</td>
+<td>Inyección de HTML</td>
+<td><code>src/web</code></td>
+</tr>
+<tr>
+<td><code>max-lines</code> (300)</td>
+<td>Módulos inmanejables</td>
+<td><code>src/**</code></td>
+</tr>
+<tr>
+<td><code>jsdoc/require-jsdoc</code></td>
+<td>Funciones exportadas sin contrato</td>
+<td><code>src/**</code></td>
+</tr>
+</tbody>
+</table>
+<p>Configuración plana con las reglas de Google replicadas: dos espacios, punto y coma, comillas simples, 100 columnas.</p>
+<h2 id="166-integracion-continua">16.6 Integración continua</h2>
+<table>
+<thead>
+<tr>
+<th>Etapa</th>
+<th>Comprobación</th>
+<th>Bloquea</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>ESLint</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>tsc --checkJs</code> sobre JSDoc</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Pruebas unitarias y de integración con cobertura</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Contrato OpenAPI</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>npm audit</code> y revisión de secretos</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Extremo a extremo sobre la imagen construida</td>
+<td>Sí</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Imagen Docker y etiqueta</td>
+<td>Sí</td>
+</tr>
+</tbody>
+</table>
+<h2 id="167-definicion-de-hecho">16.7 Definición de hecho</h2>
+<p>Un requisito está hecho cuando tiene prueba, cumple su criterio de aceptación, está reflejado en este documento, pasa la revisión y no deja deuda sin registrar.</p>
+<h2 id="168-revision-de-codigo">16.8 Revisión de código</h2>
+<p>Siete preguntas, citadas por el revisor: ¿hay prueba que falla sin el cambio? ¿la función hace una cosa y se llama como lo que hace? ¿los efectos están en el borde? ¿el error dice qué hacer? ¿se lee en una tablet a plena luz? ¿registra algo que no debe? ¿añade una decisión nueva sin ADR?</p>
+<h1 class="chapter" id="17-estadisticas">17. Estadísticas</h1>
+<h2 id="171-que-cuenta-como-uso">17.1 Qué cuenta como uso</h2>
+<p>Un préstamo cuenta cuando fue entregado y devuelto, y estuvo fuera al menos el umbral configurado (por defecto, 10 minutos). Un préstamo devuelto a los dos minutos es un error de mostrador, no una partida. Los préstamos cerrados por cierre forzoso se cuentan aparte y se marcan como tales.</p>
+<h2 id="172-metricas">17.2 Métricas</h2>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Métrica</th>
+<th>Fórmula</th>
+<th>Granularidad</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">MET-01</td>
+<td>Préstamos por juego</td>
+<td>Préstamos <code>RETURNED</code> agrupados por juego</td>
+<td>Evento, día, juego</td>
+</tr>
+<tr>
+<td class="id">MET-02</td>
+<td>Tiempo medio de uso</td>
+<td>Media y mediana de <code>returned_at − delivered_at</code></td>
+<td>Evento, juego</td>
+</tr>
+<tr>
+<td class="id">MET-03</td>
+<td>Catálogo utilizado</td>
+<td>Juegos con al menos un préstamo ÷ juegos disponibles en el evento</td>
+<td>Evento</td>
+</tr>
+<tr>
+<td class="id">MET-04</td>
+<td>Uso por día y franja</td>
+<td>Préstamos por hora del día</td>
+<td>Evento, día</td>
+</tr>
+<tr>
+<td class="id">MET-05</td>
+<td>Jugadores únicos</td>
+<td>Personas con al menos un préstamo entregado, contadas por seudónimo</td>
+<td>Evento, día</td>
+</tr>
+<tr>
+<td class="id">MET-06</td>
+<td>Ritmo de entrega</td>
+<td>Mediana y p95 del tiempo de operación en el mostrador</td>
+<td>Puesto, día</td>
+</tr>
+<tr>
+<td class="id">MET-07</td>
+<td>Préstamos forzados</td>
+<td>Cuántos se cerraron por cierre forzoso</td>
+<td>Evento</td>
+</tr>
+</tbody>
+</table>
+<h2 id="173-panel-de-sala">17.3 Panel de sala</h2>
+<p>Página <strong>totalmente pública</strong>: se abre <code>https://…/panel</code> en un monitor y no pide cuenta ni sesión. No recibe parámetro de evento, porque solo hay uno abierto; si no lo hay, no muestra ninguna lista.</p>
+<p>Tres listas, cada una recortada al número de elementos configurado en el evento (5 por defecto):</p>
+<ul>
+<li><strong>Juegos fuera:</strong> imagen, nombre y tiempo desde la entrega, del que más tiempo lleva al que menos. Si no caben todos en el monitor, se recorta por el final: solo se ven los que más tiempo llevan.</li>
+<li><strong>Más prestados:</strong> los que más veces han salido, con el número de préstamos.</li>
+<li><strong>Más jugados:</strong> los que más veces han superado el umbral de uso (el de 17.1: 10 minutos por defecto).</li>
+</ul>
+<p>La hora del último refresco se muestra siempre en un extremo, para que nadie confunda un dato viejo con uno actual. Se refresca cada 30 segundos. Sin nombres, sin DNI y sin identificadores de jugador.</p>
+<h2 id="174-informe-del-evento">17.4 Informe del evento</h2>
+<p>Se genera al cerrar y contiene: total de préstamos, jugadores únicos, juegos distintos usados y porcentaje del catálogo; ranking de los veinte juegos más prestados con su tiempo medio; uso por día y franja; préstamos cerrados a la fuerza; y el ritmo de entrega por puesto. Se exporta a PDF y CSV.</p>
+<h2 id="175-limites">17.5 Límites</h2>
+<ul>
+<li>Un préstamo no demuestra que se jugara: el umbral de 10 minutos es una aproximación y el informe lo dice.</li>
+<li>Sin imágenes ni categorías en el catálogo, no hay análisis por tipo de juego. Llegará si se integra la API.</li>
+<li>Comparar dos eventos solo tiene sentido si tuvieron duración y catálogo parecidos.</li>
+</ul>
+<h1 class="chapter" id="18-despliegue-y-operacion">18. Despliegue y operación</h1>
+<h2 id="181-puesta-en-marcha">18.1 Puesta en marcha</h2>
+<table>
+<thead>
+<tr>
+<th>Paso</th>
+<th>Quién</th>
+<th>Comprobación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Contratar dominio y VPS</td>
+<td>Sysop</td>
+<td>DNS y TLS funcionando</td>
+</tr>
+<tr>
+<td>Configurar <code>.env</code> y el volumen <code>/srv/ludoteca/data</code></td>
+<td>Sysop</td>
+<td>El fichero de base de datos y las imágenes viven fuera del contenedor</td>
+</tr>
+<tr>
+<td>Dar de alta el correo saliente</td>
+<td>Sysop</td>
+<td>SPF, DKIM y DMARC publicados, y un enlace de recuperación de prueba que llega a la bandeja de entrada</td>
+</tr>
+<tr>
+<td>Crear la primera cuenta y nombrarla administrador de aplicación</td>
+<td>Sysop</td>
+<td>Acceso y permisos</td>
+</tr>
+<tr>
+<td>Importar el catálogo</td>
+<td>Adm. aplicación</td>
+<td>600 juegos con imagen</td>
+</tr>
+<tr>
+<td>Crear el evento y las franjas</td>
+<td>Adm. aplicación</td>
+<td>Estado y próxima franja correctos</td>
+</tr>
+<tr>
+<td>Prueba de humo</td>
+<td>Adm. aplicación</td>
+<td>Registro, solicitud, entrega y devolución con cinco juegos</td>
+</tr>
+</tbody>
+</table>
+<h2 id="182-tareas-programadas">18.2 Tareas programadas</h2>
+<table>
+<thead>
+<tr>
+<th>Tarea</th>
+<th>Frecuencia</th>
+<th>Qué hace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Caducar solicitudes</td>
+<td>Cada minuto</td>
+<td>Pasa a <code>CANCELLED</code> las que superan el bloqueo configurado</td>
+</tr>
+<tr>
+<td>Abrir y cerrar por franja</td>
+<td>Cada minuto</td>
+<td>Calcula el estado del evento</td>
+</tr>
+<tr>
+<td>Copia de seguridad</td>
+<td>Diaria, 04:00</td>
+<td><code>VACUUM INTO</code>, cifrado y descarga</td>
+</tr>
+<tr>
+<td>Verificación de auditoría</td>
+<td>Semanal</td>
+<td>Recorre la cadena de hashes</td>
+</tr>
+<tr>
+<td>Limpieza de sesiones</td>
+<td>Diaria</td>
+<td>Borra las caducadas</td>
+</tr>
+<tr>
+<td>Limpieza de enlaces</td>
+<td>Cada hora</td>
+<td>Borra los enlaces de recuperación caducados o usados</td>
+</tr>
+</tbody>
+</table>
+<h2 id="183-runbook">18.3 Runbook</h2>
+<table>
+<thead>
+<tr>
+<th>Situación</th>
+<th>Acción</th>
+<th>Tiempo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>La aplicación no responde</td>
+<td><code>/health</code>, reiniciar contenedor, mirar logs</td>
+<td>5 min</td>
+</tr>
+<tr>
+<td>Error de base de datos</td>
+<td>Reiniciar; si persiste, restaurar la copia del día</td>
+<td>30 min</td>
+</tr>
+<tr>
+<td>Disco lleno</td>
+<td>Rotar logs y copias locales</td>
+<td>15 min</td>
+</tr>
+<tr>
+<td>Certificado caducado</td>
+<td>Renovación de Caddy; si falla, renovar a mano</td>
+<td>15 min</td>
+</tr>
+<tr>
+<td>Restauración</td>
+<td>Parar, sustituir el fichero, arrancar, comprobar <code>/health</code> y un préstamo de prueba</td>
+<td>30 min</td>
+</tr>
+</tbody>
+</table>
+<h2 id="184-durante-el-evento">18.4 Durante el evento</h2>
+<ul>
+<li>Una persona de guardia con acceso al panel de administración y al servidor, localizable por el canal de la asociación.</li>
+<li>El administrador de evento puede ver en todo momento cuántos juegos están fuera y desde cuándo.</li>
+<li>Si el servidor falla, la aplicación deja de aceptar operaciones y lo dice con claridad; no se inventan datos ni se guardan colas locales.</li>
+<li>Al terminar cada día: comprobar que no hay operaciones a medias, revisar los juegos fuera y cargar las tablets.</li>
+</ul>
+<h2 id="185-despues-del-evento">18.5 Después del evento</h2>
+<ol>
+<li>Cerrar el evento y generar el informe.</li>
+<li>Copia de seguridad y una restauración de prueba.</li>
+<li>Revisar el informe con la junta y guardar el PDF y el CSV.</li>
+<li>Reunión con los controladores: qué falló y qué se pide.</li>
+<li>Actualizar este documento y las ADR afectadas.</li>
+</ol>
+<h1 class="chapter" id="19-plan">19. Plan</h1>
+<h2 id="191-calendario">19.1 Calendario</h2>
+<p>El evento es en <strong>marzo de 2027</strong>, con día por confirmar. Hay margen para probar en un entorno real antes.</p>
+<table>
+<thead>
+<tr>
+<th>Fase</th>
+<th>Cuándo</th>
+<th>Contenido</th>
+<th>Puerta de salida</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>F0 · Preparación</td>
+<td>Diciembre 2026</td>
+<td>Repositorio, VPS, dominio, CI, esqueleto de la aplicación</td>
+<td>Despliegue automático de una página vacía</td>
+</tr>
+<tr>
+<td>F1 · Núcleo</td>
+<td>Diciembre 2026</td>
+<td>Cuentas, perfiles, roles, eventos y franjas, catálogo por CSV</td>
+<td>Un evento se abre y se cierra solo; catálogo importado</td>
+</tr>
+<tr>
+<td>F2 · Préstamo</td>
+<td>Enero 2027</td>
+<td>Solicitud, QR, mostrador, entrega y devolución</td>
+<td>Los cinco flujos e2e en verde</td>
+</tr>
+<tr>
+<td>F3 · Estadísticas y cierre</td>
+<td>Enero 2027</td>
+<td>Cierre con juegos fuera, informe y exportaciones</td>
+<td>Ciclo completo de un evento de prueba</td>
+</tr>
+<tr>
+<td>F4 · Prueba real</td>
+<td>Febrero 2027</td>
+<td>Sesión en el local o en un evento pequeño con 3 puestos y 20 juegos</td>
+<td>Criterios de 19.4 cumplidos</td>
+</tr>
+<tr>
+<td>F5 · Endurecimiento</td>
+<td>Febrero 2027</td>
+<td>Accesibilidad, seguridad, carga, textos y formación</td>
+<td>Revisión de permisos y prueba de carga</td>
+</tr>
+<tr>
+<td>F6 · Evento</td>
+<td>Marzo 2027</td>
+<td>Despliegue, formación y guardia</td>
+<td>KPIs medidos y evento cerrado</td>
+</tr>
+</tbody>
+</table>
+<h2 id="192-estimacion">19.2 Estimación</h2>
+<table>
+<thead>
+<tr>
+<th>Concepto</th>
+<th>Horas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cuentas, OAuth, perfiles y recuperación por correo</td>
+<td>30</td>
+</tr>
+<tr>
+<td>Eventos, franjas y estados</td>
+<td>15</td>
+</tr>
+<tr>
+<td>Catálogo, CSV, imágenes y duplicados</td>
+<td>26</td>
+</tr>
+<tr>
+<td>Solicitud, entrega y devolución</td>
+<td>35</td>
+</tr>
+<tr>
+<td>Mostrador y lector de QR</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Estadísticas, panel de sala e informe</td>
+<td>24</td>
+</tr>
+<tr>
+<td>Administración, roles, auditoría y listado de usuarios</td>
+<td>20</td>
+</tr>
+<tr>
+<td>Interfaz, accesibilidad e imágenes</td>
+<td>34</td>
+</tr>
+<tr>
+<td>Pruebas, carga y seguridad</td>
+<td>25</td>
+</tr>
+<tr>
+<td>Despliegue y documentación</td>
+<td>16</td>
+</tr>
+<tr>
+<td><strong>Total</strong></td>
+<td><strong>245 h</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Con media jornada son unas 11 semanas y media; el calendario de 12 deja un colchón corto. No incluye trabajo de campo: no hay que etiquetar cajas.</p>
+<h2 id="193-coste">19.3 Coste</h2>
+<table>
+<thead>
+<tr>
+<th>Concepto</th>
+<th>Coste</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>VPS 1 vCPU / 2 GB</td>
+<td>6–10 €/mes</td>
+</tr>
+<tr>
+<td>Dominio</td>
+<td>12 €/año</td>
+</tr>
+<tr>
+<td>Correo saliente (solo recuperación)</td>
+<td>0 € en el tramo gratuito</td>
+</tr>
+<tr>
+<td>Licencias</td>
+<td>0 €</td>
+</tr>
+</tbody>
+</table>
+<h2 id="194-criterios-para-dar-el-sistema-por-bueno">19.4 Criterios para dar el sistema por bueno</h2>
+<p>Antes del evento: 100 operaciones seguidas sin error en la prueba real; entrega por debajo de 20 segundos de mediana; devolución por debajo de 20 segundos; cinco personas completan el alta sin ayuda; restauración de copia probada y cronometrada.</p>
+<p>Después del evento: KPI-01 a KPI-04 medidos y anotados en este documento.</p>
+<h2 id="195-riesgos">19.5 Riesgos</h2>
+<table>
+<thead>
+<tr>
+<th>Riesgo</th>
+<th>Prob.</th>
+<th>Impacto</th>
+<th>Mitigación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Facebook no aprueba la aplicación a tiempo</td>
+<td>Media</td>
+<td>Bajo</td>
+<td>La configuración por evento permite desactivarlo; Google y cuenta local cubren el caso</td>
+</tr>
+<tr>
+<td>El CSV de BGG cambia de formato</td>
+<td>Baja</td>
+<td>Medio</td>
+<td>El importador exige solo dos columnas y avisa con el detalle del error</td>
+</tr>
+<tr>
+<td>La cámara de las tablets no lee bien los QR</td>
+<td>Media</td>
+<td>Alto</td>
+<td>Prueba en la fase F4 con las tablets reales; alternativa de búsqueda por nombre</td>
+</tr>
+<tr>
+<td>La wifi del recinto no cubre el mostrador</td>
+<td>Media</td>
+<td>Alto</td>
+<td>Prueba de cobertura el día anterior; router 4G de respaldo</td>
+</tr>
+<tr>
+<td>El día del evento coincide con otro acto</td>
+<td>Baja</td>
+<td>Medio</td>
+<td>Solo un evento abierto a la vez por diseño</td>
+</tr>
+<tr>
+<td>Una sola persona sabe mantenerlo</td>
+<td>Alta</td>
+<td>Medio</td>
+<td>Documentación, ADR y sesión de traspaso al sysop</td>
+</tr>
+<tr>
+<td>Los voluntarios no practican</td>
+<td>Media</td>
+<td>Medio</td>
+<td>Formación de 15 minutos y tarjeta plastificada por puesto</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="20-mejoras-futuras">20. Mejoras futuras</h1>
+<p>Nada de lo que sigue está en el alcance de esta versión. Se anota para no perderlo y, sobre todo, para que las decisiones de hoy no lo impidan mañana.</p>
+<table>
+<thead>
+<tr>
+<th>Mejora</th>
+<th>Qué aportaría</th>
+<th>Por qué no está ahora</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Avisos por correo</td>
+<td>Recordatorio de devolución, resumen diario al administrador, aviso de cierre</td>
+<td>El canal ya está montado para la recuperación; faltan plantillas y decidir qué se avisa</td>
+</tr>
+<tr>
+<td>Etiqueta QR en las cajas</td>
+<td>Devolución en dos segundos sin buscar el nombre</td>
+<td>No hay un sistema de etiquetado fiable y son horas de trabajo de campo</td>
+</tr>
+<tr>
+<td>Cola de espera</td>
+<td>Que quien quiere un juego prestado reciba aviso al liberarse</td>
+<td>Añade avisos, caducidades y una pantalla más; el evento es corto</td>
+</tr>
+<tr>
+<td>Reserva anticipada</td>
+<td>Reservar desde casa antes del evento</td>
+<td>Trae no-shows y bloqueo de inventario</td>
+</tr>
+<tr>
+<td>Plazo de devolución y prórrogas</td>
+<td>Control del tiempo de uso y devoluciones tardías</td>
+<td>Requiere política, avisos y discusión sobre sanciones</td>
+</tr>
+<tr>
+<td>Incidencias, piezas y recuento</td>
+<td>Saber qué juego ha vuelto incompleto o dañado</td>
+<td>Aceptar el juego se consideró revisión suficiente</td>
+</tr>
+<tr>
+<td>Más datos de BGG</td>
+<td>Imagen grande, número de jugadores, duración y categorías en la ficha</td>
+<td>La API ya se usa para la miniatura; ampliar campos es barato pero suma trabajo de interfaz</td>
+</tr>
+<tr>
+<td>Sincronización automática del catálogo</td>
+<td>Importar sin intervención cada semana</td>
+<td>Depende del token y de que la API siga abierta; hoy el CSV es suficiente</td>
+</tr>
+<tr>
+<td>Varios eventos simultáneos</td>
+<td>Dos ferias a la vez con inventarios distintos</td>
+<td>Hoy solo puede haber uno abierto; el modelo tendría que cambiar de ámbito</td>
+</tr>
+<tr>
+<td>Traducción de la interfaz</td>
+<td>Valenciano o inglés</td>
+<td>Los textos ya están en un fichero único; falta la traducción, no la estructura</td>
+</tr>
+<tr>
+<td>Segundo factor</td>
+<td>Proteger mejor las cuentas de administración</td>
+<td>Fricción innecesaria para el tamaño actual</td>
+</tr>
+<tr>
+<td>Avisos en el móvil</td>
+<td>Notificaciones push sin abrir la aplicación</td>
+<td>Requiere service worker y permisos; la web instalable ya cubre el uso</td>
+</tr>
+<tr>
+<td>Histórico y comparativa en el panel</td>
+<td>Ver la evolución entre eventos</td>
+<td>El panel está pensado para la sala, no para el análisis</td>
+</tr>
+<tr>
+<td>Fianzas o sanciones</td>
+<td>Cubrir pérdidas</td>
+<td>Decisión de la asociación, no técnica</td>
+</tr>
+</tbody>
+</table>
+<p>Tres de estas mejoras cambian el modelo de datos y conviene tenerlas presentes: la <strong>cola de espera</strong> (tabla nueva), el <strong>plazo de devolución</strong> (campos de vencimiento en el préstamo) y el <strong>multi-evento</strong> (ámbito por evento en casi todas las tablas). Las demás son añadidos que no rompen lo construido.</p>
+<p>El orden que tendría más sentido, si hay un segundo evento: primero las etiquetas QR y los avisos por correo —que son las dos que más tiempo ahorran en el mostrador—, después la cola de espera, y solo más tarde los plazos y las incidencias.</p>
+<h1 class="chapter" id="anexo-a-registro-de-decisiones-adr">Anexo A · Registro de decisiones (ADR)</h1>
+<p>Cada decisión se mantiene mientras no se revise por escrito. Una ADR sustituida se marca, no se borra.</p>
+<h2 id="adr-001-tablas-de-estado-y-auditoria-sin-event-sourcing">ADR-001 · Tablas de estado y auditoría, sin Event Sourcing</h2>
+<ul>
+<li><strong>Contexto.</strong> El documento original pedía Event Sourcing con CQRS. El alcance final tiene un solo agregado con reglas y tres transiciones.</li>
+<li><strong>Decisión.</strong> Tablas de estado (<code>loans</code>, <code>games</code>, <code>events</code>) más una tabla de auditoría de solo anexión con hash encadenado.</li>
+<li><strong>Alternativa.</strong> Libro de eventos con proyecciones: 15.000 asientos por evento, reconstrucción y migraciones por replay.</li>
+<li><strong>Consecuencia.</strong> Menos código que mantener y ninguna consulta que dependa de reconstruir. Se pierde la posibilidad de reconstruir el estado en una fecha pasada; el historial de préstamos y la auditoría cubren las preguntas reales.</li>
+</ul>
+<h2 id="adr-002-sqlite-con-wal">ADR-002 · SQLite con WAL</h2>
+<ul>
+<li><strong>Contexto.</strong> 50 MB al año, 5 escrituras por segundo en el pico y una sola persona administrando.</li>
+<li><strong>Decisión.</strong> SQLite en modo WAL, con <code>node:sqlite</code> incluido en Node.</li>
+<li><strong>Alternativa.</strong> PostgreSQL: un servidor más que actualizar, copiar y vigilar, para un volumen que no lo pide.</li>
+<li><strong>Consecuencia.</strong> Copia de seguridad = copiar un fichero; instalación = un contenedor. Un solo escritor a la vez, que con este volumen no se alcanza. La salida a PostgreSQL está aislada en el repositorio.</li>
+</ul>
+<h2 id="adr-003-hono-en-lugar-de-express">ADR-003 · Hono en lugar de Express</h2>
+<ul>
+<li><strong>Contexto.</strong> Se prohíben <code>class</code>, <code>new</code> y <code>this</code> en el código propio; Express arrastra un modelo de middleware con estado compartido.</li>
+<li><strong>Decisión.</strong> Hono 4 con validación zod.</li>
+<li><strong>Alternativa.</strong> Express 5 (maduro, ecosistema enorme) y Fastify (más rápido, plugins con estado).</li>
+<li><strong>Consecuencia.</strong> Rutas como funciones, composición clara y 14 kB de dependencia. Ecosistema más pequeño y menos ejemplos en foros.</li>
+</ul>
+<h2 id="adr-004-catalogo-por-csv">ADR-004 · Catálogo por CSV</h2>
+<ul>
+<li><strong>Contexto.</strong> El acceso automatizado a BGG devuelve 403 de Cloudflare y la API exige token con aprobación.</li>
+<li><strong>Decisión.</strong> Importación por el CSV que el propio BGG exporta; la API queda como mejora opcional.</li>
+<li><strong>Alternativa.</strong> Scraper (bloqueado) o API desde el primer día (depende de una aprobación externa).</li>
+<li><strong>Consecuencia.</strong> El catálogo se actualiza a mano cuando cambia. A cambio, el sistema no depende de un tercero para arrancar y no hay imágenes en el MVP.</li>
+</ul>
+<h2 id="adr-005-fomantic-ui">ADR-005 · Fomantic-UI</h2>
+<ul>
+<li><strong>Contexto.</strong> Semantic UI no tiene desarrollo activo.</li>
+<li><strong>Decisión.</strong> Fomantic-UI, el fork mantenido, con las mismas clases.</li>
+<li><strong>Alternativa.</strong> Semantic UI congelado; Tailwind; Bootstrap.</li>
+<li><strong>Consecuencia.</strong> Se conserva el lenguaje visual pedido. Algunos módulos siguen necesitando jQuery; no se usan: solo CSS y nuestros propios componentes.</li>
+</ul>
+<h2 id="adr-006-configuracion-plana-de-eslint">ADR-006 · Configuración plana de ESLint</h2>
+<ul>
+<li><strong>Contexto.</strong> <code>eslint-config-google</code> está archivado desde el 1 de junio de 2026 y no tiene equivalente en configuración plana.</li>
+<li><strong>Decisión.</strong> Configuración propia con las reglas equivalentes.</li>
+<li><strong>Alternativa.</strong> Quedarse en ESLint 8 con el paquete congelado.</li>
+<li><strong>Consecuencia.</strong> Mantenemos las reglas y las actualizamos con el lenguaje.</li>
+</ul>
+<h2 id="adr-007-javascript-con-jsdoc-y-checkjs">ADR-007 · JavaScript con JSDoc y <code>checkJs</code></h2>
+<ul>
+<li><strong>Contexto.</strong> Se pide JavaScript; conviene detectar errores antes de ejecutar.</li>
+<li><strong>Decisión.</strong> JSDoc en las funciones públicas y comprobación de tipos en CI.</li>
+<li><strong>Alternativa.</strong> TypeScript: más garantías, un paso de compilación y un lenguaje distinto del pedido.</li>
+<li><strong>Consecuencia.</strong> Menos seguridad de tipos que TypeScript. A cambio, el código que se ejecuta es el que se lee.</li>
+</ul>
+<h2 id="adr-008-sesiones-opacas-en-base-de-datos">ADR-008 · Sesiones opacas en base de datos</h2>
+<ul>
+<li><strong>Contexto.</strong> Hay que poder expulsar a alguien al retirarle un rol.</li>
+<li><strong>Decisión.</strong> Token aleatorio de 256 bits, guardado como hash, con caducidad y revocación.</li>
+<li><strong>Alternativa.</strong> JWT: sin consulta por petición, pero revocación complicada.</li>
+<li><strong>Consecuencia.</strong> Una consulta indexada por petición autenticada. A cambio, retirar un rol surte efecto inmediato.</li>
+</ul>
+<h2 id="adr-009-scrypt-en-lugar-de-argon2id">ADR-009 · scrypt en lugar de argon2id</h2>
+<ul>
+<li><strong>Contexto.</strong> argon2id exige una dependencia nativa que hay que compilar en la imagen.</li>
+<li><strong>Decisión.</strong> <code>crypto.scrypt</code> con <code>N=2^17</code>, <code>r=8</code>, <code>p=1</code> y sal de 32 bytes.</li>
+<li><strong>Alternativa.</strong> argon2id (algo mejor en teoría) o bcrypt (peor).</li>
+<li><strong>Consecuencia.</strong> Sin dependencias nativas y con parámetros equivalentes en la práctica. El coste por inicio de sesión ronda 300 ms, aceptable con 5 intentos por minuto.</li>
+</ul>
+<h2 id="adr-010-token-qr-aleatorio-no-firmado">ADR-010 · Token QR aleatorio, no firmado</h2>
+<ul>
+<li><strong>Contexto.</strong> El QR se enseña en una pantalla y debe servir una sola vez.</li>
+<li><strong>Decisión.</strong> 128 bits aleatorios, guardados como hash, con la caducidad del evento y marca de uso.</li>
+<li><strong>Alternativa.</strong> JWT firmado dentro del QR: no se puede invalidar tras el primer uso.</li>
+<li><strong>Consecuencia.</strong> Una fila por solicitud y una comprobación por escaneo. Garantiza el «un solo uso» que un JWT no da.</li>
+</ul>
+<h2 id="adr-011-una-caja-un-registro">ADR-011 · Una caja, un registro</h2>
+<ul>
+<li><strong>Contexto.</strong> El documento no aclaraba si un título con dos copias es uno o dos registros.</li>
+<li><strong>Decisión.</strong> Cada copia física tiene su fila y su etiqueta de ejemplar; los duplicados se numeran.</li>
+<li><strong>Alternativa.</strong> Un registro por título con contador de ejemplares.</li>
+<li><strong>Consecuencia.</strong> Trazabilidad exacta y devoluciones sin ambigüedad. El catálogo muestra «Catan (2)» cuando hay dos cajas.</li>
+</ul>
+<h2 id="adr-012-sin-funcionamiento-sin-conexion">ADR-012 · Sin funcionamiento sin conexión</h2>
+<ul>
+<li><strong>Contexto.</strong> Se asume red en el recinto y el sistema no es crítico.</li>
+<li><strong>Decisión.</strong> Si no hay red, la aplicación lo dice y no acepta operaciones.</li>
+<li><strong>Alternativa.</strong> Cola local con reconciliación: duplica el código de escritura y obliga a resolver conflictos.</li>
+<li><strong>Consecuencia.</strong> Menos código y menos estados imposibles. Si la red falla, el mostrador espera; no se registran datos a medias.</li>
+</ul>
+<h2 id="adr-013-imagenes-desde-la-api-de-bgg">ADR-013 · Imágenes desde la API de BGG</h2>
+<ul>
+<li><strong>Contexto.</strong> El jugador elige mirando; el CSV no trae imágenes y el scraping está bloqueado.</li>
+<li><strong>Decisión.</strong> Descargar las miniaturas con la API y el token de aplicación, a una petición por segundo, y guardarlas en el volumen de datos.</li>
+<li><strong>Alternativa.</strong> Sin imágenes, o con una columna <code>image_url</code> rellenada a mano.</li>
+<li><strong>Consecuencia.</strong> El catálogo se reconoce de un vistazo y el servidor no depende de BGG en cada visita. A cambio, hay un trámite previo y una descarga inicial de unos diez minutos.</li>
+</ul>
+<h2 id="adr-014-sin-etiquetas-qr-en-las-cajas">ADR-014 · Sin etiquetas QR en las cajas</h2>
+<ul>
+<li><strong>Contexto.</strong> Etiquetar 600 cajas es trabajo de campo y no hay un sistema de etiquetas fiable.</li>
+<li><strong>Decisión.</strong> La devolución se identifica por el QR del jugador o por el nombre del juego entre los préstamos abiertos.</li>
+<li><strong>Alternativa.</strong> Etiqueta por caja con QR impreso.</li>
+<li><strong>Consecuencia.</strong> Cero trabajo previo y ninguna etiqueta que se caiga. A cambio, el controlador teclea parte del nombre cuando el jugador no está delante.</li>
+</ul>
+<h2 id="adr-015-correo-solo-para-recuperar-la-contrasena">ADR-015 · Correo solo para recuperar la contraseña</h2>
+<ul>
+<li><strong>Contexto.</strong> Sin correo, una cuenta local sin contraseña solo se arregla a mano en el mostrador. Con verificación de cuenta, un fallo del proveedor deja a alguien sin poder jugar.</li>
+<li><strong>Decisión.</strong> Un único correo saliente: el enlace de recuperación. Nada de verificación, avisos ni resúmenes.</li>
+<li><strong>Alternativa.</strong> Sin correo (restablecimiento por un administrador) o correo completo con verificación y avisos.</li>
+<li><strong>Consecuencia.</strong> Quien escribe mal su correo puede recuperarlo igualmente pidiendo ayuda, y nadie se queda fuera por un rebote. A cambio, una cuenta con correo falso nunca se arregla sola: depende de que haya un administrador disponible.</li>
+</ul>
+<h1 class="chapter" id="anexo-b-matriz-de-permisos-por-endpoint">Anexo B · Matriz de permisos por endpoint</h1>
+<p>● permitido · ◐ con condición · — denegado · ○ público sin sesión.</p>
+<table class="endpoints">
+<thead>
+<tr>
+<th>Método y ruta</th>
+<th style="text-align: center;">Público</th>
+<th style="text-align: center;">Jugador</th>
+<th style="text-align: center;">Controlador</th>
+<th style="text-align: center;">Adm. evento</th>
+<th style="text-align: center;">Analista</th>
+<th style="text-align: center;">Adm. aplicación</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="ep"><code>POST /<wbr>auth/<wbr>register</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>auth/<wbr>login</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>auth/<wbr>logout</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>auth/<wbr>google/<wbr>callback</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>auth/<wbr>facebook/<wbr>callback</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>auth/<wbr>password/<wbr>forgot</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>auth/<wbr>password/<wbr>reset</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>me</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>PATCH /<wbr>me</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>events/<wbr>current</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>games</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>loans</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>DELETE /<wbr>loans/<wbr>{id}</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">● el suyo</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>loans/<wbr>active</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">● el suyo</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>loans/<wbr>{id}/<wbr>deliver</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>loans/<wbr>return</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>events/<wbr>{id}/<wbr>users</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>panel</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>games/<wbr>{id}/<wbr>duplicate</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>games/<wbr>images/<wbr>download</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>events/<wbr>{id}/<wbr>loans</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>events/<wbr>{id}/<wbr>close</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>events/<wbr>{id}/<wbr>reopen</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>PATCH /<wbr>event-games/<wbr>{gameId}</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>audit</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">◐ su evento</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>audit/<wbr>verify</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>stats/<wbr>{eventId}</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>stats/<wbr>{eventId}/<wbr>export.csv</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>roles</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">◐ controladores</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>events</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>PUT /<wbr>admin/<wbr>events/<wbr>{id}</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>events/<wbr>{id}/<wbr>catalog/<wbr>import</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>POST /<wbr>admin/<wbr>games</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>PATCH /<wbr>admin/<wbr>games/<wbr>{id}</code></td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">—</td>
+<td style="text-align: center;">●</td>
+</tr>
+<tr>
+<td class="ep"><code>GET /<wbr>health</code></td>
+<td style="text-align: center;">○</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+<td style="text-align: center;">●</td>
+</tr>
+</tbody>
+</table>
+<h1 class="chapter" id="anexo-c-esquema-de-la-base-de-datos">Anexo C · Esquema de la base de datos</h1>
+<p>SQLite, con claves foráneas activas y WAL. Los identificadores son UUID v7 en texto; las fechas, ISO 8601 en UTC.</p>
+<pre><code class="language-sql">PRAGMA journal_mode = WAL;
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE users (
+  id                TEXT PRIMARY KEY,
+  email             TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash     TEXT,                         -- scrypt: sal$hash
+  google_sub        TEXT UNIQUE,
+  facebook_sub      TEXT UNIQUE,
+  first_name        TEXT,
+  last_name         TEXT,
+  dni_encrypted     BLOB,                         -- AES-256-GCM
+  dni_masked        TEXT,                         -- ***123X
+  adult_confirmed_at TEXT,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT,
+  CHECK (google_sub IS NOT NULL OR facebook_sub IS NOT NULL OR password_hash IS NOT NULL)
+);
+
+CREATE TABLE email_tokens (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash  BLOB NOT NULL UNIQUE,
+  purpose     TEXT NOT NULL DEFAULT 'reset' CHECK (purpose IN ('reset')),
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX email_tokens_user ON email_tokens (user_id, expires_at);
+
+CREATE TABLE user_roles (
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role    TEXT NOT NULL CHECK (role IN ('player','controller','event_admin','analyst','app_admin')),
+  PRIMARY KEY (user_id, role)
+);
+
+CREATE TABLE sessions (
+  id          TEXT PRIMARY KEY,
+  token_hash  BLOB NOT NULL UNIQUE,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL,
+  expires_at  TEXT NOT NULL,
+  revoked_at  TEXT,
+  user_agent  TEXT
+);
+CREATE INDEX sessions_user ON sessions(user_id);
+
+CREATE TABLE events (
+  id                 TEXT PRIMARY KEY,
+  name               TEXT NOT NULL,
+  description         TEXT,
+  instructions        TEXT,
+  privacy_policy      TEXT,
+  starts_at           TEXT NOT NULL,
+  ends_at             TEXT NOT NULL,
+  timezone            TEXT NOT NULL DEFAULT 'Europe/Madrid',
+  allow_local         INTEGER NOT NULL DEFAULT 1,
+  allow_google        INTEGER NOT NULL DEFAULT 0,
+  allow_facebook      INTEGER NOT NULL DEFAULT 0,
+  request_ttl_minutes INTEGER NOT NULL DEFAULT 15 CHECK (request_ttl_minutes BETWEEN 1 AND 120),
+  panel_loans_limit   INTEGER NOT NULL DEFAULT 5 CHECK (panel_loans_limit BETWEEN 1 AND 20),
+  panel_ranking_limit INTEGER NOT NULL DEFAULT 5 CHECK (panel_ranking_limit BETWEEN 1 AND 20),
+  manual_closed_until TEXT,
+  created_by          TEXT REFERENCES users(id),
+  created_at          TEXT NOT NULL,
+  CHECK (ends_at &gt; starts_at),
+  CHECK (allow_local + allow_google + allow_facebook &gt;= 1)
+);
+
+CREATE TABLE time_slots (
+  id        TEXT PRIMARY KEY,
+  event_id  TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  starts_at TEXT NOT NULL,
+  ends_at   TEXT NOT NULL,
+  CHECK (ends_at &gt; starts_at)
+);
+CREATE INDEX slots_event ON time_slots(event_id, starts_at);
+
+CREATE TABLE games (
+  id         TEXT PRIMARY KEY,
+  bgg_id     TEXT,                    -- no único: dos copias comparten título
+  name       TEXT NOT NULL,
+  year       INTEGER,
+  copy_label TEXT,                    -- &quot;2&quot; para la segunda copia
+  image_path TEXT,                    -- /data/images/&lt;bgg_id&gt;.jpg (compartida entre copias)
+  image_status TEXT NOT NULL DEFAULT 'pending'
+               CHECK (image_status IN ('pending','ok','none','error')),
+  retired    INTEGER NOT NULL DEFAULT 0,
+  notes      TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX games_bgg ON games(bgg_id);
+CREATE INDEX games_name ON games(name COLLATE NOCASE);
+
+CREATE TABLE event_games (
+  event_id     TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  game_id      TEXT NOT NULL REFERENCES games(id),
+  blocked      INTEGER NOT NULL DEFAULT 0,
+  block_reason TEXT,
+  manually_lent INTEGER NOT NULL DEFAULT 0,
+  updated_by   TEXT REFERENCES users(id),
+  updated_at   TEXT,
+  PRIMARY KEY (event_id, game_id)
+);
+
+CREATE TABLE loans (
+  id           TEXT PRIMARY KEY,
+  event_id     TEXT NOT NULL REFERENCES events(id),
+  game_id      TEXT NOT NULL REFERENCES games(id),
+  user_id      TEXT NOT NULL REFERENCES users(id),
+  status       TEXT NOT NULL CHECK (status IN ('REQUESTED','DELIVERED','RETURNED','CANCELLED')),
+  requested_at TEXT NOT NULL,
+  delivered_at TEXT,
+  delivered_by TEXT REFERENCES users(id),
+  returned_at  TEXT,
+  returned_by  TEXT REFERENCES users(id),
+  closed_reason TEXT,                 -- forced_close | player_cancel | expired | correction
+  corrected    INTEGER NOT NULL DEFAULT 0,
+  version      INTEGER NOT NULL DEFAULT 1,
+  CHECK (delivered_at IS NULL OR delivered_at &gt;= requested_at),
+  CHECK (returned_at IS NULL OR delivered_at IS NOT NULL)
+);
+
+-- Una sola entrega viva por juego y por jugador (INV-01, INV-02)
+CREATE UNIQUE INDEX loans_one_delivered_per_game
+  ON loans(game_id) WHERE status = 'DELIVERED';
+CREATE UNIQUE INDEX loans_one_active_per_user
+  ON loans(user_id) WHERE status IN ('REQUESTED','DELIVERED');
+
+CREATE INDEX loans_event ON loans(event_id, status);
+CREATE INDEX loans_user ON loans(user_id, requested_at);
+
+CREATE TABLE qr_tokens (
+  token_hash BLOB PRIMARY KEY,
+  loan_id    TEXT NOT NULL REFERENCES loans(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  used_at    TEXT
+);
+CREATE INDEX qr_loan ON qr_tokens(loan_id);
+
+CREATE TABLE audit_log (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id   TEXT REFERENCES users(id),
+  action     TEXT NOT NULL,
+  entity     TEXT NOT NULL,
+  entity_id  TEXT,
+  data       TEXT,
+  created_at TEXT NOT NULL,
+  prev_hash  BLOB,
+  hash       BLOB NOT NULL
+);
+CREATE INDEX audit_entity ON audit_log(entity, entity_id);
+CREATE INDEX audit_created ON audit_log(created_at);
+
+CREATE TABLE settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+</code></pre>
+<p>Dos detalles que evitan clases enteras de errores: los índices únicos parciales impiden dos entregas vivas del mismo juego y dos préstamos vivos del mismo jugador <strong>en la base de datos</strong>, no solo en el código; y la auditoría no tiene <code>UPDATE</code> ni <code>DELETE</code> en ningún repositorio.</p>
+<h1 class="chapter" id="anexo-d-contrato-openapi">Anexo D · Contrato OpenAPI</h1>
+<p>Fragmento con las tres operaciones centrales; el contrato completo está en <code>openapi.yaml</code>.</p>
+<pre><code class="language-yaml">openapi: 3.1.0
+info:
+  title: Ludoteca API
+  version: 2.0.0
+servers:
+  - url: https://ludoteca.example/api/v1
+paths:
+  /loans:
+    post:
+      summary: Solicita un juego
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId]
+              additionalProperties: false
+              properties:
+                gameId: { type: string, format: uuid }
+      responses:
+        &quot;201&quot;:
+          description: Solicitud creada con su QR
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  loan: { $ref: &quot;#/components/schemas/Loan&quot; }
+                  qrCode: { type: string, description: &quot;Token que se dibuja como QR&quot; }
+                  expiresAt: { type: string, format: date-time }
+        &quot;409&quot;: { $ref: &quot;#/components/responses/Conflict&quot; }
+  /loans/{id}/deliver:
+    post:
+      summary: Entrega el juego escaneando el QR del jugador
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [qrCode]
+              additionalProperties: false
+              properties:
+                qrCode: { type: string, minLength: 20 }
+      responses:
+        &quot;200&quot;:
+          description: Entregado
+          content:
+            application/json:
+              schema: { $ref: &quot;#/components/schemas/Loan&quot; }
+        &quot;409&quot;: { $ref: &quot;#/components/responses/Conflict&quot; }
+        &quot;403&quot;: { $ref: &quot;#/components/responses/Forbidden&quot; }
+  /loans/return:
+    post:
+      summary: Devuelve el juego de un jugador
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerQr]
+              additionalProperties: false
+              properties:
+                playerQr: { type: string, description: &quot;QR del jugador o identificador del préstamo&quot; }
+                loanId: { type: string, format: uuid }
+      responses:
+        &quot;200&quot;:
+          description: Devuelto
+          content:
+            application/json:
+              schema: { $ref: &quot;#/components/schemas/Loan&quot; }
+        &quot;404&quot;: { $ref: &quot;#/components/responses/Conflict&quot; }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: ludoteca_session
+  schemas:
+    Loan:
+      type: object
+      required: [id, status, game, player, requestedAt]
+      properties:
+        id: { type: string, format: uuid }
+        status: { enum: [REQUESTED, DELIVERED, RETURNED, CANCELLED] }
+        game: { type: object, properties: { id: { type: string }, name: { type: string } } }
+        player: { type: object, properties: { id: { type: string }, name: { type: string } } }
+        requestedAt: { type: string, format: date-time }
+        deliveredAt: { type: string, format: date-time, nullable: true }
+        returnedAt: { type: string, format: date-time, nullable: true }
+        version: { type: integer }
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code: { type: string, example: GAME_NOT_AVAILABLE }
+  responses:
+    Conflict:
+      description: Regla de negocio incumplida
+      content:
+        application/problem+json:
+          schema: { $ref: &quot;#/components/schemas/Problem&quot; }
+    Forbidden:
+      description: Sin permiso
+      content:
+        application/problem+json:
+          schema: { $ref: &quot;#/components/schemas/Problem&quot; }
+</code></pre>
+<p>Códigos de error estables: <code>EVENT_CLOSED</code>, <code>GAME_NOT_AVAILABLE</code>, <code>LOAN_ALREADY_ACTIVE</code>, <code>ADULT_REQUIRED</code>, <code>PROFILE_INCOMPLETE</code>, <code>QR_INVALID</code>, <code>QR_EXPIRED</code>, <code>QR_ALREADY_USED</code>, <code>GAME_ON_LOAN</code>, <code>FORBIDDEN</code>, <code>IMPORT_BLOCKED</code>.</p>
+<h1 class="chapter" id="anexo-e-listas-de-comprobacion">Anexo E · Listas de comprobación</h1>
+<h2 id="e1-antes-del-evento">E.1 Antes del evento</h2>
+<p><strong>T-14 días</strong>
+- [ ] Catálogo importado y revisado (nombres, duplicados, juegos sin QR).
+- [ ] Imágenes descargadas; ningún juego sin miniatura salvo los que no están en BGG.
+- [ ] Evento creado con sus franjas y revisado en el calendario.
+- [ ] Juegos añadidos al evento y bloqueos aplicados.</p>
+<p><strong>T-7 días</strong>
+- [ ] Controladores nombrados y con acceso probado.
+- [ ] Tablets configuradas con la aplicación instalada y la sesión iniciada.
+- [ ] Prueba de humo completa con cinco juegos.
+- [ ] Restauración de una copia de seguridad, cronometrada.</p>
+<p><strong>T-1 día</strong>
+- [ ] Wifi comprobada en el mostrador; router 4G cargado.
+- [ ] Tablets y baterías externas cargadas.
+- [ ] Carteles con el QR de la aplicación impresos.
+- [ ] Persona de guardia confirmada.</p>
+<h2 id="e2-durante-el-evento">E.2 Durante el evento</h2>
+<p><strong>Al abrir</strong>
+- [ ] Comprobar que el evento figura Abierto en dos puestos distintos.
+- [ ] Verificar que un jugador de prueba ve el catálogo.</p>
+<p><strong>En cada relevo</strong>
+- [ ] Revisar la lista de juegos fuera y su hora de salida.
+- [ ] Comprobar que la tablet tiene red y batería.</p>
+<p><strong>Al cerrar el día</strong>
+- [ ] Cerrar el evento a la hora prevista.
+- [ ] Anotar los juegos que quedan fuera.</p>
+<h2 id="e3-despues-del-evento">E.3 Después del evento</h2>
+<ul>
+<li>[ ] Cerrar el evento y revisar el aviso de juegos fuera.</li>
+<li>[ ] Generar el informe y guardar el PDF y el CSV.</li>
+<li>[ ] Copia de seguridad y restauración de prueba.</li>
+<li>[ ] Enviar un enlace de recuperación de prueba y comprobar que llega a la bandeja de entrada, no a spam.</li>
+<li>[ ] Comprobar que el panel de sala carga en el monitor sin sesión.</li>
+<li>[ ] Reunión con controladores y actualización de este documento.</li>
+</ul>
+<h1 class="chapter" id="anexo-f-catalogo-de-pruebas">Anexo F · Catálogo de pruebas</h1>
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Caso</th>
+<th>Resultado esperado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="id">T-01</td>
+<td>Registro con correo nuevo</td>
+<td>Cuenta creada y sesión iniciada</td>
+</tr>
+<tr>
+<td class="id">T-02</td>
+<td>Registro con correo existente</td>
+<td>Error que ofrece iniciar sesión</td>
+</tr>
+<tr>
+<td class="id">T-03</td>
+<td>Acceso con Google permitido</td>
+<td>Cuenta vinculada por correo</td>
+</tr>
+<tr>
+<td class="id">T-04</td>
+<td>Acceso con Google desactivado en el evento</td>
+<td>Botón oculto y error explicativo</td>
+</tr>
+<tr>
+<td class="id">T-05</td>
+<td>Solicitud sin perfil completo</td>
+<td><code>PROFILE_INCOMPLETE</code> con enlace al perfil</td>
+</tr>
+<tr>
+<td class="id">T-06</td>
+<td>Solicitud sin declarar mayoría de edad</td>
+<td><code>ADULT_REQUIRED</code></td>
+</tr>
+<tr>
+<td class="id">T-07</td>
+<td>Solicitud de juego bloqueado</td>
+<td><code>GAME_NOT_AVAILABLE</code> con motivo</td>
+</tr>
+<tr>
+<td class="id">T-08</td>
+<td>Segunda solicitud con préstamo activo</td>
+<td><code>LOAN_ALREADY_ACTIVE</code></td>
+</tr>
+<tr>
+<td class="id">T-09</td>
+<td>Caducidad de la solicitud al cumplirse el bloqueo</td>
+<td>Estado <code>CANCELLED</code> y juego libre</td>
+</tr>
+<tr>
+<td class="id">T-10</td>
+<td>Entrega con QR válido</td>
+<td><code>DELIVERED</code> con controlador y hora</td>
+</tr>
+<tr>
+<td class="id">T-11</td>
+<td>Entrega con QR usado</td>
+<td><code>QR_ALREADY_USED</code></td>
+</tr>
+<tr>
+<td class="id">T-12</td>
+<td>Entrega con QR caducado</td>
+<td><code>QR_EXPIRED</code></td>
+</tr>
+<tr>
+<td class="id">T-13</td>
+<td>Dos entregas simultáneas del mismo juego</td>
+<td>Una <code>DELIVERED</code>, otra <code>GAME_NOT_AVAILABLE</code></td>
+</tr>
+<tr>
+<td class="id">T-14</td>
+<td>Entrega con evento cerrado</td>
+<td><code>EVENT_CLOSED</code></td>
+</tr>
+<tr>
+<td class="id">T-15</td>
+<td>Devolución con evento cerrado</td>
+<td>Aceptada</td>
+</tr>
+<tr>
+<td class="id">T-16</td>
+<td>Devolución de un jugador sin préstamo</td>
+<td>Aviso, último préstamo y opción de corrección</td>
+</tr>
+<tr>
+<td class="id">T-17</td>
+<td>Cierre con juegos fuera y forzar</td>
+<td>Préstamos <code>RETURNED</code> con <code>forced_close</code></td>
+</tr>
+<tr>
+<td class="id">T-18</td>
+<td>Importación con evento abierto</td>
+<td><code>IMPORT_BLOCKED</code></td>
+</tr>
+<tr>
+<td class="id">T-19</td>
+<td>Importación con un juego prestado</td>
+<td>Rechazo con el juego identificado</td>
+</tr>
+<tr>
+<td class="id">T-20</td>
+<td>Controlador consulta el DNI</td>
+<td><code>***123X</code></td>
+</tr>
+<tr>
+<td class="id">T-21</td>
+<td>Administrador de aplicación abre una ficha</td>
+<td>Ve el DNI completo, sin pedir motivo</td>
+</tr>
+<tr>
+<td class="id">T-22</td>
+<td>Cambio de hora de marzo</td>
+<td>Una sola apertura, sin duplicar franja</td>
+</tr>
+<tr>
+<td class="id">T-23</td>
+<td>Dos eventos con franjas solapadas</td>
+<td>Solo uno se abre y se avisa</td>
+</tr>
+<tr>
+<td class="id">T-24</td>
+<td>Corrección sin motivo</td>
+<td>Rechazo</td>
+</tr>
+<tr>
+<td class="id">T-25</td>
+<td>Alteración de un asiento de auditoría</td>
+<td><code>audit:verify</code> señala la fila</td>
+</tr>
+<tr>
+<td class="id">T-26</td>
+<td>Carga: 120 préstamos en una hora, 40 usuarios</td>
+<td>p95 ≤ 500 ms, cero errores 5xx</td>
+</tr>
+<tr>
+<td class="id">T-27</td>
+<td>Carga: 10 entregas simultáneas del mismo juego</td>
+<td>Una sola entrega válida</td>
+</tr>
+<tr>
+<td class="id">T-28</td>
+<td>Usabilidad: cinco personas</td>
+<td>90 % de tareas sin ayuda, entrega ≤ 20 s</td>
+</tr>
+<tr>
+<td class="id">T-29</td>
+<td>Panel de sala sin sesión de operador</td>
+<td>Muestra juegos fuera y ranking, sin nombres ni DNI</td>
+</tr>
+<tr>
+<td class="id">T-30</td>
+<td>Descarga de imágenes con un juego inaccesible</td>
+<td>Reintenta, informa del fallo y no bloquea el resto</td>
+</tr>
+<tr>
+<td class="id">T-31</td>
+<td>Apertura y exportación del listado de usuarios</td>
+<td>Asiento de auditoría con actor y evento en ambas</td>
+</tr>
+<tr>
+<td class="id">T-32</td>
+<td>Dos ejemplares del mismo título</td>
+<td>Se prestan a la vez a dos jugadores distintos</td>
+</tr>
+<tr>
+<td class="id">T-33</td>
+<td>Bloqueo configurado a 30 minutos</td>
+<td>La solicitud caduca a los 30, no a los 15</td>
+</tr>
+<tr>
+<td class="id">T-34</td>
+<td>Panel sin sesión y sin evento abierto</td>
+<td>No muestra ninguna lista</td>
+</tr>
+<tr>
+<td class="id">T-35</td>
+<td>Panel con evento abierto y límite 3</td>
+<td>Tres juegos fuera, tres más prestados, tres más jugados</td>
+</tr>
+<tr>
+<td class="id">T-36</td>
+<td>Lista de juegos fuera con 20 préstamos y límite 10</td>
+<td>Se ven los diez con más tiempo</td>
+</tr>
+<tr>
+<td class="id">T-37</td>
+<td>Recuperación con un correo registrado</td>
+<td>La pantalla enseña la dirección antes de enviar y el enlace llega</td>
+</tr>
+<tr>
+<td class="id">T-38</td>
+<td>Recuperación con un correo que no existe</td>
+<td>Misma pantalla y mismo mensaje; no se envía nada</td>
+</tr>
+<tr>
+<td class="id">T-39</td>
+<td>Enlace caducado o ya usado</td>
+<td>Se rechaza y se muestra el mensaje de ayuda a la organización</td>
+</tr>
+<tr>
+<td class="id">T-40</td>
+<td>Cuenta creada con Google pide recuperación</td>
+<td>Se le indica que entre con Google y que pida ayuda si no puede</td>
+</tr>
+<tr>
+<td class="id">T-41</td>
+<td>Restablecer la contraseña con otra sesión abierta</td>
+<td>La otra sesión queda cerrada</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,109 @@
+# Anexo A · Registro de decisiones (ADR)
+
+Cada decisión se mantiene mientras no se revise por escrito. Una ADR sustituida se marca, no se borra.
+
+## ADR-001 · Tablas de estado y auditoría, sin Event Sourcing
+
+- **Contexto.** El documento original pedía Event Sourcing con CQRS. El alcance final tiene un solo agregado con reglas y tres transiciones.
+- **Decisión.** Tablas de estado (`loans`, `games`, `events`) más una tabla de auditoría de solo anexión con hash encadenado.
+- **Alternativa.** Libro de eventos con proyecciones: 15.000 asientos por evento, reconstrucción y migraciones por replay.
+- **Consecuencia.** Menos código que mantener y ninguna consulta que dependa de reconstruir. Se pierde la posibilidad de reconstruir el estado en una fecha pasada; el historial de préstamos y la auditoría cubren las preguntas reales.
+
+## ADR-002 · SQLite con WAL
+
+- **Contexto.** 50 MB al año, 5 escrituras por segundo en el pico y una sola persona administrando.
+- **Decisión.** SQLite en modo WAL, con `node:sqlite` incluido en Node.
+- **Alternativa.** PostgreSQL: un servidor más que actualizar, copiar y vigilar, para un volumen que no lo pide.
+- **Consecuencia.** Copia de seguridad = copiar un fichero; instalación = un contenedor. Un solo escritor a la vez, que con este volumen no se alcanza. La salida a PostgreSQL está aislada en el repositorio.
+
+## ADR-003 · Hono en lugar de Express
+
+- **Contexto.** Se prohíben `class`, `new` y `this` en el código propio; Express arrastra un modelo de middleware con estado compartido.
+- **Decisión.** Hono 4 con validación zod.
+- **Alternativa.** Express 5 (maduro, ecosistema enorme) y Fastify (más rápido, plugins con estado).
+- **Consecuencia.** Rutas como funciones, composición clara y 14 kB de dependencia. Ecosistema más pequeño y menos ejemplos en foros.
+
+## ADR-004 · Catálogo por CSV
+
+- **Contexto.** El acceso automatizado a BGG devuelve 403 de Cloudflare y la API exige token con aprobación.
+- **Decisión.** Importación por el CSV que el propio BGG exporta; la API queda como mejora opcional.
+- **Alternativa.** Scraper (bloqueado) o API desde el primer día (depende de una aprobación externa).
+- **Consecuencia.** El catálogo se actualiza a mano cuando cambia. A cambio, el sistema no depende de un tercero para arrancar y no hay imágenes en el MVP.
+
+## ADR-005 · Fomantic-UI
+
+- **Contexto.** Semantic UI no tiene desarrollo activo.
+- **Decisión.** Fomantic-UI, el fork mantenido, con las mismas clases.
+- **Alternativa.** Semantic UI congelado; Tailwind; Bootstrap.
+- **Consecuencia.** Se conserva el lenguaje visual pedido. Algunos módulos siguen necesitando jQuery; no se usan: solo CSS y nuestros propios componentes.
+
+## ADR-006 · Configuración plana de ESLint
+
+- **Contexto.** `eslint-config-google` está archivado desde el 1 de junio de 2026 y no tiene equivalente en configuración plana.
+- **Decisión.** Configuración propia con las reglas equivalentes.
+- **Alternativa.** Quedarse en ESLint 8 con el paquete congelado.
+- **Consecuencia.** Mantenemos las reglas y las actualizamos con el lenguaje.
+
+## ADR-007 · JavaScript con JSDoc y `checkJs`
+
+- **Contexto.** Se pide JavaScript; conviene detectar errores antes de ejecutar.
+- **Decisión.** JSDoc en las funciones públicas y comprobación de tipos en CI.
+- **Alternativa.** TypeScript: más garantías, un paso de compilación y un lenguaje distinto del pedido.
+- **Consecuencia.** Menos seguridad de tipos que TypeScript. A cambio, el código que se ejecuta es el que se lee.
+
+## ADR-008 · Sesiones opacas en base de datos
+
+- **Contexto.** Hay que poder expulsar a alguien al retirarle un rol.
+- **Decisión.** Token aleatorio de 256 bits, guardado como hash, con caducidad y revocación.
+- **Alternativa.** JWT: sin consulta por petición, pero revocación complicada.
+- **Consecuencia.** Una consulta indexada por petición autenticada. A cambio, retirar un rol surte efecto inmediato.
+
+## ADR-009 · scrypt en lugar de argon2id
+
+- **Contexto.** argon2id exige una dependencia nativa que hay que compilar en la imagen.
+- **Decisión.** `crypto.scrypt` con `N=2^17`, `r=8`, `p=1` y sal de 32 bytes.
+- **Alternativa.** argon2id (algo mejor en teoría) o bcrypt (peor).
+- **Consecuencia.** Sin dependencias nativas y con parámetros equivalentes en la práctica. El coste por inicio de sesión ronda 300 ms, aceptable con 5 intentos por minuto.
+
+## ADR-010 · Token QR aleatorio, no firmado
+
+- **Contexto.** El QR se enseña en una pantalla y debe servir una sola vez.
+- **Decisión.** 128 bits aleatorios, guardados como hash, con la caducidad del evento y marca de uso.
+- **Alternativa.** JWT firmado dentro del QR: no se puede invalidar tras el primer uso.
+- **Consecuencia.** Una fila por solicitud y una comprobación por escaneo. Garantiza el «un solo uso» que un JWT no da.
+
+## ADR-011 · Una caja, un registro
+
+- **Contexto.** El documento no aclaraba si un título con dos copias es uno o dos registros.
+- **Decisión.** Cada copia física tiene su fila y su etiqueta de ejemplar; los duplicados se numeran.
+- **Alternativa.** Un registro por título con contador de ejemplares.
+- **Consecuencia.** Trazabilidad exacta y devoluciones sin ambigüedad. El catálogo muestra «Catan (2)» cuando hay dos cajas.
+
+## ADR-012 · Sin funcionamiento sin conexión
+
+- **Contexto.** Se asume red en el recinto y el sistema no es crítico.
+- **Decisión.** Si no hay red, la aplicación lo dice y no acepta operaciones.
+- **Alternativa.** Cola local con reconciliación: duplica el código de escritura y obliga a resolver conflictos.
+- **Consecuencia.** Menos código y menos estados imposibles. Si la red falla, el mostrador espera; no se registran datos a medias.
+
+## ADR-013 · Imágenes desde la API de BGG
+
+- **Contexto.** El jugador elige mirando; el CSV no trae imágenes y el scraping está bloqueado.
+- **Decisión.** Descargar las miniaturas con la API y el token de aplicación, a una petición por segundo, y guardarlas en el volumen de datos.
+- **Alternativa.** Sin imágenes, o con una columna `image_url` rellenada a mano.
+- **Consecuencia.** El catálogo se reconoce de un vistazo y el servidor no depende de BGG en cada visita. A cambio, hay un trámite previo y una descarga inicial de unos diez minutos.
+
+## ADR-014 · Sin etiquetas QR en las cajas
+
+- **Contexto.** Etiquetar 600 cajas es trabajo de campo y no hay un sistema de etiquetas fiable.
+- **Decisión.** La devolución se identifica por el QR del jugador o por el nombre del juego entre los préstamos abiertos.
+- **Alternativa.** Etiqueta por caja con QR impreso.
+- **Consecuencia.** Cero trabajo previo y ninguna etiqueta que se caiga. A cambio, el controlador teclea parte del nombre cuando el jugador no está delante.
+
+
+## ADR-015 · Correo solo para recuperar la contraseña
+
+- **Contexto.** Sin correo, una cuenta local sin contraseña solo se arregla a mano en el mostrador. Con verificación de cuenta, un fallo del proveedor deja a alguien sin poder jugar.
+- **Decisión.** Un único correo saliente: el enlace de recuperación. Nada de verificación, avisos ni resúmenes.
+- **Alternativa.** Sin correo (restablecimiento por un administrador) o correo completo con verificación y avisos.
+- **Consecuencia.** Quien escribe mal su correo puede recuperarlo igualmente pidiendo ayuda, y nadie se queda fuera por un rebote. A cambio, una cuenta con correo falso nunca se arregla sola: depende de que haya un administrador disponible.

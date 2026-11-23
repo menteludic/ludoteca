@@ -1,0 +1,22 @@
+# Dependencias
+node_modules/
+package-lock.json.bak
+
+# Entorno y secretos
+.env
+.env.*
+
+# Datos locales y artefactos
+data/
+*.db
+*.db-wal
+*.db-shm
+coverage/
+dist/
+*.log
+
+# Editor y sistema
+.DS_Store
+.idea/
+.vscode/
+*.swp
