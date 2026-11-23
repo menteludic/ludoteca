@@ -26,7 +26,7 @@
           └──────────────┘
 ```
 
-Un proceso, un contenedor, un fichero de base de datos y un proxy con TLS. No hay servidor de base de datos que administrar, ni colas, ni microservicios.
+Un proceso, un contenedor, un fichero de base de datos y el Nginx Proxy Manager que ya corre en el host (ADR-016). No hay servidor de base de datos que administrar, ni colas, ni microservicios.
 
 ## 15.2 Elección de la base de datos
 
@@ -75,7 +75,7 @@ Si en el futuro se quiere Event Sourcing de verdad, las reglas del capítulo 8 n
 | Empaquetado | esbuild | Un comando, sin configuración |
 | Pruebas | `node:test` + `c8` | Incluidos en Node; sin framework que mantener |
 | Navegador de pruebas | Playwright | Cinco flujos de extremo a extremo |
-| Proxy | Caddy | TLS automático y cero configuración |
+| Proxy | **Nginx Proxy Manager** del host (ADR-016) | TLS y certificados donde ya los gestiona el sysop; la app escucha HTTP en un puerto interno |
 
 ## 15.5 Comparativa de framework HTTP
 
@@ -108,13 +108,14 @@ Regla de dependencia: `domain` no importa nada; `app` importa `domain`; `infra` 
 
 | Pieza | Decisión |
 |---|---|
-| Contenedores | `app` (Node 24) y `proxy` (Caddy). La base de datos es un volumen. |
-| Servidor | VPS de 1 vCPU y 2 GB, 6–10 €/mes |
-| Configuración | Variables de entorno en `.env`, fuera del repositorio |
+| Contenedores | Solo `app`, con el UID 10001. El TLS lo termina el Nginx Proxy Manager del host, no un Caddy propio. |
+| Servidor | VPS de 1 vCPU y 2 GB, 6–10 €/mes, con Portainer como panel de operación |
+| Exposición | La app escucha HTTP en `0.0.0.0:4000` dentro del contenedor y se publica en `127.0.0.1:${APP_PORT}` del host. NPM enruta el dominio y emite el certificado. |
+| Configuración | Variables de entorno en `/srv/ludoteca/.env`, fuera del repositorio |
 | Datos | **Volumen Docker fuera del contenedor**: `/srv/ludoteca/data` montado en `/data`. Dentro viven `ludoteca.db`, `ludoteca.db-wal` y `images/`. Recrear o actualizar el contenedor no toca el dato. |
-| Copias | `VACUUM INTO` diario sobre `/data`, cifrado con age, descargado a almacenamiento externo |
-| CI/CD | Lint, tipos, pruebas, cobertura, contrato, e2e; imagen Docker al etiquetar |
-| Monitorización | `/health` cada 5 minutos desde fuera; el fallo se ve en el panel del administrador |
+| Copias | `VACUUM INTO` diario sobre `/data`, más copia semanal cifrada fuera del host |
+| CI/CD | Actions: `quality`, `contract` y `e2e`; en `main`, imagen `sha-<corto>` en GHCR y despliegue por SSH con healthcheck y rollback (ADR-017) |
+| Monitorización | `/health` cada 5 minutos desde fuera; devuelve estado de la base, versión del esquema y SHA desplegado |
 
 ## 15.8 Decisiones de arquitectura
 
@@ -135,3 +136,6 @@ Regla de dependencia: `domain` no importa nada; `app` importa `domain`; `infra` 
 | ADR-013 | Imágenes por API de BGG con token | CSV ampliado o sin imágenes | Requiere el trámite de registro; a cambio, el catálogo es reconocible de un vistazo |
 | ADR-014 | Sin etiquetas QR en las cajas | Etiqueta por caja | Ahorra horas de trabajo y depende de algo que hoy no existe; la devolución va por el jugador |
 | ADR-015 | Correo solo para recuperar la contraseña | Sin correo o correo completo | Desbloquea las cuentas locales sin depender de un rebote; asume un proveedor y tres registros DNS |
+| ADR-016 | TLS en Nginx Proxy Manager; app en puerto interno | Caddy en el compose | Un contenedor menos; la app depende de las cabeceras `X-Forwarded-*` |
+| ADR-017 | Actions + GHCR + SSH con etiqueta por SHA | Webhook de Portainer con `latest` | Despliegue automático con rollback determinista; exige una clave SSH restringida en el VPS |
+| ADR-018 | Portainer como panel, no como despliegue | Stack gestionado con GitOps | Una sola fuente de verdad; el stack se ve como contenedores externos |

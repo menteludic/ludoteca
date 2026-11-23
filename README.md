@@ -25,7 +25,7 @@ Una regla que ordena todo lo demás: **un juego por jugador a la vez**, sin rese
 | HTTP | Hono 4 con contrato OpenAPI |
 | Datos | SQLite en WAL con `node:sqlite`, en un volumen fuera del contenedor |
 | Interfaz | snabbdom + Fomantic-UI, sin paso de compilación |
-| Servidor | Caddy en Docker Compose, VPS de 6–10 €/mes |
+| Servidor | VPS con Nginx Proxy Manager; la app escucha HTTP en un puerto interno (ADR-016) |
 | Pruebas | `node:test`, TDD, cobertura global del 90 % |
 
 Sin Event Sourcing: tablas de estado y auditoría de solo anexión con hash encadenado. El detalle y las alternativas descartadas están en `docs/15-arquitectura.md` y `docs/anexos/a-decisiones-adr.md`.
@@ -51,7 +51,7 @@ Empieza por `docs/README.md`. Si buscas el documento completo de una vez, está 
 
 ## Puesta en marcha
 
-Pendiente: llegará con el primer código. Necesitará el volumen de datos (`/srv/ludoteca/data`) montado fuera del contenedor y una copia de seguridad probada antes del evento.
+Lo que hay que preparar en el VPS (usuario de despliegue, clave SSH restringida, NPM, Cloudflare, copias) está en `docs/puesta-en-marcha-servidor.md`. Necesita el volumen de datos (`/srv/ludoteca/data`) fuera del contenedor y una copia de seguridad probada antes del evento.
 
 ## Convenciones
 

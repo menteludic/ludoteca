@@ -107,3 +107,24 @@ Cada decisión se mantiene mientras no se revise por escrito. Una ADR sustituida
 - **Decisión.** Un único correo saliente: el enlace de recuperación. Nada de verificación, avisos ni resúmenes.
 - **Alternativa.** Sin correo (restablecimiento por un administrador) o correo completo con verificación y avisos.
 - **Consecuencia.** Quien escribe mal su correo puede recuperarlo igualmente pidiendo ayuda, y nadie se queda fuera por un rebote. A cambio, una cuenta con correo falso nunca se arregla sola: depende de que haya un administrador disponible.
+
+## ADR-016 · Terminación TLS en Nginx Proxy Manager
+
+- **Contexto.** El VPS ya publica todas sus aplicaciones con Nginx Proxy Manager: DNS en Cloudflare, proxy host en NPM, certificado gestionado por NPM y la aplicación escuchando en un puerto interno. Un Caddy propio en el compose añadiría un segundo terminador TLS y un segundo juego de certificados.
+- **Decisión.** La aplicación sirve HTTP en un puerto configurable (`APP_PORT`, 4000 por defecto), publicado solo en `127.0.0.1`. NPM enruta el dominio, emite el certificado y aplica HSTS; la app emite las cabeceras de seguridad de SEC-07 y lee la IP y el esquema reales con `TRUST_PROXY_HOPS=2`.
+- **Alternativa.** Caddy en el compose (lo que decía 15.7): TLS automático, pero dos proxys delante del mismo host y dos formas de renovar certificados que mantener.
+- **Consecuencia.** Un contenedor menos y el TLS en la herramienta que el sysop ya usa. A cambio, la app depende de `X-Forwarded-For`/`X-Forwarded-Proto` para el límite por IP y para los enlaces absolutos; mal configurado, SEC-06 cuenta a todos los clientes como uno. El límite de subida y los timeouts largos pasan a NPM.
+
+## ADR-017 · Entrega continua con Actions, GHCR y etiqueta por SHA
+
+- **Contexto.** El repositorio es público, hay un VPS con acceso SSH y se pide que un push probado llegue a producción sin intervención.
+- **Decisión.** GitHub Actions ejecuta `quality`, `contract` y `e2e`; solo en `main` construye la imagen, la publica en GHCR etiquetada `sha-<corto>` y despliega por SSH con un wrapper que solo acepta `deploy <tag>`, `rollback` y `status`. El wrapper hace backup, migraciones, `up -d`, comprueba que `/health` declara el tag desplegado y revierte si no.
+- **Alternativa.** Usar `latest` con un webhook de Portainer (más simple, sin rollback determinista) o Watchtower (despliega sin puerta de pruebas).
+- **Consecuencia.** Cada versión en producción es una imagen inmutable que pasó las pruebas, y volver atrás es una orden. A cambio, el servidor guarda una clave SSH restringida por `command=` y el compose del servidor se actualiza a mano cuando cambia, no en cada despliegue.
+
+## ADR-018 · Portainer como panel de operación, no como vía de despliegue
+
+- **Contexto.** El VPS se administra con Portainer, y existe la tentación de dejar que Portainer haga el redeploy desde el repositorio Git.
+- **Decisión.** Portainer queda para observar y operar (logs, estado, reinicio de emergencia). El despliegue lo hace el pipeline por SSH; el stack se levanta con `docker compose` desde `/srv/ludoteca`.
+- **Alternativa.** Stack gestionado por Portainer con GitOps y webhook: Portainer actualiza el compose, pero no promueve etiquetas de imagen, así que acaba usando `latest`.
+- **Consecuencia.** Una sola fuente de verdad del despliegue y rollback reproducible. A cambio, el stack aparece en Portainer como contenedores externos, sin botón de redeploy, y hay que resistir la tentación de editar contenedores desde su interfaz.

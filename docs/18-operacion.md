@@ -4,7 +4,8 @@
 
 | Paso | Quién | Comprobación |
 |---|---|---|
-| Contratar dominio y VPS | Sysop | DNS y TLS funcionando |
+| Dominio y DNS en Cloudflare | Sysop | Registro apuntando al VPS |
+| Proxy host y certificado en NPM | Sysop | `https://ludoteca.floyd303.com` responde y el certificado es válido |
 | Configurar `.env` y el volumen `/srv/ludoteca/data` | Sysop | El fichero de base de datos y las imágenes viven fuera del contenedor |
 | Dar de alta el correo saliente | Sysop | SPF, DKIM y DMARC publicados, y un enlace de recuperación de prueba que llega a la bandeja de entrada |
 | Crear la primera cuenta y nombrarla administrador de aplicación | Sysop | Acceso y permisos |
@@ -30,7 +31,7 @@
 | La aplicación no responde | `/health`, reiniciar contenedor, mirar logs | 5 min |
 | Error de base de datos | Reiniciar; si persiste, restaurar la copia del día | 30 min |
 | Disco lleno | Rotar logs y copias locales | 15 min |
-| Certificado caducado | Renovación de Caddy; si falla, renovar a mano | 15 min |
+| Certificado caducado | Renovación en NPM; si falla, emitir de nuevo con la nube de Cloudflare en gris | 15 min |
 | Restauración | Parar, sustituir el fichero, arrancar, comprobar `/health` y un préstamo de prueba | 30 min |
 
 ## 18.4 Durante el evento

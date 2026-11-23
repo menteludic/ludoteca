@@ -7,6 +7,7 @@
 | 0.1 | 12/11/2026 | Roberto M. | Documento inicial: objetivos, actores y stack técnico. |
 | 0.2 | 23/11/2026 | Hermes | Análisis crítico y decisiones D1–D12. |
 | 1.0 | 23/11/2026 | Hermes | Documento de proyecto. Base para el desarrollo. |
+| 1.1 | 23/11/2026 | Hermes | TLS en Nginx Proxy Manager (ADR-016), entrega continua con Actions, GHCR y SSH (ADR-017), Portainer como panel (ADR-018). Repositorio público con licencia MIT. |
 
 ## 1.2 Aprobación
 
