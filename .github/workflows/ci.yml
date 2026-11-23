@@ -84,15 +84,23 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Clave de despliegue y host conocido
+        env:
+          # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
+          # un secreto: fijarla aquí evita depender de que el secret esté pegado
+          # con el formato exacto de known_hosts.
+          EXPECTED: SHA256:LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
-          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy
           grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
             { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
-          grep -Eq '^[^ ]+ ssh-ed25519 AAAA[A-Za-z0-9+/=]+$' ~/.ssh/known_hosts ||
-            { echo "SSH_KNOWN_HOSTS no contiene una línea de known_hosts válida"; exit 1; }
+          ssh-keyscan -t ed25519 "${{ secrets.SSH_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
+          [ -s ~/.ssh/known_hosts ] ||
+            { echo "no se pudo leer la clave del host ${{ secrets.SSH_HOST }}"; exit 1; }
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)
+          [ "$actual" = "$EXPECTED" ] ||
+            { echo "clave del host inesperada: $actual (se esperaba $EXPECTED)"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
@@ -140,15 +148,23 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Clave de despliegue y host conocido
+        env:
+          # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
+          # un secreto: fijarla aquí evita depender de que el secret esté pegado
+          # con el formato exacto de known_hosts.
+          EXPECTED: SHA256:LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
-          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy
           grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
             { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
-          grep -Eq '^[^ ]+ ssh-ed25519 AAAA[A-Za-z0-9+/=]+$' ~/.ssh/known_hosts ||
-            { echo "SSH_KNOWN_HOSTS no contiene una línea de known_hosts válida"; exit 1; }
+          ssh-keyscan -t ed25519 "${{ secrets.SSH_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
+          [ -s ~/.ssh/known_hosts ] ||
+            { echo "no se pudo leer la clave del host ${{ secrets.SSH_HOST }}"; exit 1; }
+          actual=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)
+          [ "$actual" = "$EXPECTED" ] ||
+            { echo "clave del host inesperada: $actual (se esperaba $EXPECTED)"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
