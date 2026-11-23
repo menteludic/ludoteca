@@ -431,3 +431,56 @@ La imagen que se prueba en local es la que se publica: mismo Dockerfile, misma e
 | Dominios | `ludoteca.floyd303.com` y `ludoteca-stg.floyd303.com` |
 | Staging | Mismo VPS, volumen y clave de cifrado propios, contraseña básica |
 | Copia fuera del VPS | Pendiente (PEN-01) |
+## 6. Primer despliegue: quién hace qué
+
+Para que no haya dudas de responsabilidad, esta es la lista cerrada. Lo que no está aquí, no bloquea.
+
+**Desarrollo (yo):**
+
+1. `Dockerfile` sobre `node:24-alpine` con usuario 10001 y healthcheck.
+2. `.github/workflows/ci.yml`: job `quality` (lint, tipos, pruebas con cobertura, `npm audit`, revisión de secretos) y job `deploy` en `main`.
+3. `contract` y `e2e` se añaden cuando existan las rutas y la interfaz (fases F1 y F2). Hasta entonces no son checks obligatorios, y así se dice en la protección de `main`.
+4. Verificar el primer despliegue leyendo el log del pipeline y el `/health` de staging.
+
+**Sysop (Roberto):**
+
+1. Borrar los contenedores de prueba, que ocupan los nombres reales:
+
+   ```sh
+   docker rm -f ludoteca-prod-app ludoteca-stg-app
+   ```
+
+2. Copiar el compose a cada entorno y validarlo:
+
+   ```sh
+   cp deploy/compose.yaml /home/ubuntu/docker/ludoteca/prod/compose.yaml
+   cp deploy/compose.yaml /home/ubuntu/docker/ludoteca/stg/compose.yaml
+   cd /home/ubuntu/docker/ludoteca/prod && docker compose config -q && echo OK
+   cd /home/ubuntu/docker/ludoteca/stg && docker compose config -q && echo OK
+   ```
+
+3. Añadir `ENV_NAME` a los dos `.env` (`ENV_NAME=prod` y `ENV_NAME=stg`) y comprobar que existe `data/backups`.
+
+4. Access List con usuario y contraseña en el proxy host de staging.
+
+5. Subir el código a GitHub (es el único bloqueo duro; sin eso no hay imagen ni despliegue). Ver apartado 6.1.
+
+6. Secretos y variable en GitHub: `SSH_HOST`, `SSH_USER`, `SSH_KEY`, `SSH_KNOWN_HOSTS` y la variable `APP_URL`.
+
+7. Tras el primer pipeline con éxito, poner el paquete GHCR en público (*Settings → Packages → ludoteca → Change visibility*).
+
+### 6.1 Subir el código
+
+El repositorio local no tiene remoto configurado y no hay credenciales de GitHub en el servidor de desarrollo, así que el primer `push` lo hace el sysop:
+
+```sh
+cd /ruta/al/repositorio/ludoteca      # el mismo árbol que se ha ido commiteando
+git remote add origin git@github.com:menteludic/ludoteca.git
+git fetch origin
+git log --oneline origin/main | head -5     # ¿hay commits en GitHub que no estén aquí?
+git push -u origin main
+```
+
+Si el segundo `git log` muestra commits (por ejemplo, la licencia añadida desde la web), integrarlos antes de empujar: `git pull --rebase origin main`, resolver si hay conflicto y repetir el `push`. Un `git push --force` aquí no es aceptable: borraría trabajo del repositorio.
+
+**Alternativa si el repositorio está solo en el servidor de desarrollo:** se genera un par de claves, la pública se añade en GitHub como *Deploy key* con permiso de escritura, y el `push` lo hace el propio entorno de desarrollo. La clave nunca se pega en un chat.
