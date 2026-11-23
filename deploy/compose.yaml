@@ -2,7 +2,9 @@
 # /home/ubuntu/docker/ludoteca/{prod,stg}/compose.yaml y solo se toca
 # cuando cambia este fichero. Un despliegue normal solo mueve TAG en el .env.
 #
-# Requiere en el .env de cada entorno: ENV_NAME (prod o stg), TAG y APP_PORT.
+# Requiere en el .env de cada entorno: ENV_NAME (prod o stg) y TAG.
+# No publica puertos: el proxy llega por la red «proxy» y no se expone nada
+# en el host (ADR-019). La salud se pregunta con `docker compose exec`.
 name: ludoteca-${ENV_NAME:?define ENV_NAME en .env}
 
 services:
@@ -11,8 +13,6 @@ services:
     container_name: ludoteca-${ENV_NAME:?define ENV_NAME en .env}-app
     restart: unless-stopped
     env_file: .env
-    ports:
-      - "127.0.0.1:${APP_PORT:-4000}:4000"
     volumes:
       - ./data:/data
     networks:

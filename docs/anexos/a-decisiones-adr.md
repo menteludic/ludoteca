@@ -128,3 +128,10 @@ Cada decisión se mantiene mientras no se revise por escrito. Una ADR sustituida
 - **Decisión.** Portainer queda para observar y operar (logs, estado, reinicio de emergencia). El despliegue lo hace el pipeline por SSH; el stack se levanta con `docker compose` desde `/srv/ludoteca`.
 - **Alternativa.** Stack gestionado por Portainer con GitOps y webhook: Portainer actualiza el compose, pero no promueve etiquetas de imagen, así que acaba usando `latest`.
 - **Consecuencia.** Una sola fuente de verdad del despliegue y rollback reproducible. A cambio, el stack aparece en Portainer como contenedores externos, sin botón de redeploy, y hay que resistir la tentación de editar contenedores desde su interfaz.
+
+## ADR-019 · Puerto único interno y sin publicación en el host
+
+- **Contexto.** Con dos entornos en el mismo VPS, mapear el puerto de fuera al 4000 de dentro (4000 prod, 4001 stg) hacía que el proxy, el healthcheck y el `.env` tuvieran que coincidir en tres sitios. El primer intento chocó con otro servicio que ya ocupaba el 4000 del host.
+- **Decisión.** La app escucha en 4000 dentro del contenedor en todos los entornos y no se publica ningún puerto en el host. El proxy llega por la red Docker con el nombre del contenedor y el script de despliegue comprueba la salud con `docker compose exec`.
+- **Alternativa.** Publicar en `127.0.0.1:${APP_PORT}` y que el proxy y el healthcheck usaran ese puerto: funciona, pero cualquier servicio del host puede ocuparlo y el fallo aparece como 502 solo en un entorno.
+- **Consecuencia.** Un solo puerto que recordar y ningún choque posible. A cambio, no se puede hacer `curl` desde el host para comprobar: se usa `docker compose exec`, y si el contenedor no arranca, `exec` falla (que es justo lo que el despliegue necesita saber).

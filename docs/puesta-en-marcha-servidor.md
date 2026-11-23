@@ -19,17 +19,23 @@ Nginx Proxy Manager  ── certificado Let's Encrypt, HSTS, límite de subida
 Contenedor app (Node 24 LTS, UID 10001)  ── /home/ubuntu/docker/ludoteca/prod/data:/data
 ```
 
-Dos entornos en el mismo VPS, separados por carpeta, puerto y volumen:
+Dos entornos en el mismo VPS, separados por carpeta y volumen:
 
 ```
 /home/ubuntu/docker/ludoteca/
-├── prod/   .env  compose.yaml  data/{ludoteca.db,images,backups}   APP_PORT=4000
-└── stg/    .env  compose.yaml  data/{ludoteca.db,images,backups}   APP_PORT=4001
+├── prod/   .env  compose.yaml  data/{ludoteca.db,images,backups}
+└── stg/    .env  compose.yaml  data/{ludoteca.db,images,backups}
 ```
 
-Consecuencias que afectan al código:
+Reglas de puerto, y son solo dos:
 
-- La app escucha HTTP en `4000` dentro del contenedor. En el host se publica **solo en `127.0.0.1`**: el proxy la alcanza por la red Docker y el script de despliegue hace el healthcheck sin abrir nada a internet.
+1. **La app escucha en 4000 dentro del contenedor, siempre, en los dos entornos.** No es configurable y no depende del entorno.
+2. **No se publica ningún puerto al host.** El proxy llega por la red Docker y el script de despliegue comprueba la salud **dentro** del contenedor.
+
+Así desaparecen dos clases de fallo: el choque con otro servicio que ya ocupe un puerto del host, y el 502 que solo aparece en un entorno porque el puerto de fuera no coincide con el de dentro.
+
+El resto de consecuencias:
+
 - Cloudflare queda en **solo DNS**, como las demás aplicaciones del servidor. Hay un único proxy delante: `TRUST_PROXY_HOPS=1`. Si algún día se activa el proxy de Cloudflare, pasa a `2`.
 - El proxy ya emite HSTS (verificado por fuera: `max-age=63072000; preload`). La app emite CSP, `Referrer-Policy`, `nosniff` y `frame-ancestors`; **no** repite HSTS ni nada que ponga el proxy. Dos CSP se suman y rompen la interfaz.
 - El límite de subida y los timeouts largos se configuran en el proxy, no en la app.
@@ -57,7 +63,7 @@ sudo -u '#10001' sh -c 'touch /home/ubuntu/docker/ludoteca/prod/data/.probe && r
 
 ### 1.2 Red compartida con el proxy
 
-El proxy resuelve el contenedor por su nombre de servicio, así que los dos tienen que estar en la misma red Docker:
+El proxy resuelve el contenedor por su nombre, así que los dos tienen que estar en la misma red Docker:
 
 ```sh
 docker network create proxy 2>/dev/null || true
@@ -82,53 +88,44 @@ networks:
 
 Nuestro `deploy/compose.yaml` ya declara `networks: [proxy]` y `container_name: ludoteca-${ENV_NAME}-app`; no hay nada que cambiar de este lado.
 
-**Comprobación de que resuelven el uno al otro** (antes del primer despliegue fallará por contenedor inexistente, después no):
-
-```sh
-docker exec <contenedor-del-proxy> nslookup ludoteca-prod-app
-docker exec <contenedor-del-proxy> wget -qO- http://ludoteca-prod-app:4000/health
-```
-
-**Aviso:** en el proxy, el *Forward Hostname* tiene que ser `ludoteca-prod-app` (o la IP del host, `172.17.0.1`), nunca `127.0.0.1`. Dentro del contenedor del proxy, `127.0.0.1` es el propio proxy, y el síntoma es un 502 permanente aunque la aplicación esté levantada y sana.
+**Aviso:** en el proxy, el *Forward Hostname* tiene que ser `ludoteca-prod-app` (o `ludoteca-stg-app`), nunca `127.0.0.1`. Dentro del contenedor del proxy, `127.0.0.1` es el propio proxy, y el síntoma es un 502 permanente aunque la aplicación esté levantada y sana.
 
 ### 1.2 bis · Validar la cadena antes del primer despliegue
 
-Los contenedores de la aplicación los crea el compose del pipeline; no se crean a mano y no existen hasta que hay imagen en GHCR (`docker compose up -d` falla con `manifest unknown` antes). Para comprobar **hoy** que la red, el proxy y el TLS están bien, se levanta un contenedor de mentira con el nombre exacto que usará el compose:
+Los contenedores de la aplicación los crea el compose del pipeline; no se crean a mano y no existen hasta que hay imagen en GHCR (`docker compose up -d` falla con `manifest unknown` antes). Para comprobar **hoy** que la red, el proxy y el TLS están bien, se levanta un contenedor de mentira con el nombre exacto y **en el puerto 4000**, como la aplicación real:
 
 ```sh
 docker run -d --name ludoteca-stg-app --network proxy \
-  node:24-alpine node -e 'require("node:http").createServer((_,res)=>{res.setHeader("content-type","application/json");res.end(JSON.stringify({status:"ok",version:"probe"}))}).listen(4001,"0.0.0.0")'
+  node:24-alpine node -e 'require("node:http").createServer((_,res)=>{res.setHeader("content-type","application/json");res.end(JSON.stringify({status:"ok",version:"probe"}))}).listen(4000,"0.0.0.0")'
 ```
 
-Sin `--rm` y sin `-p`, a propósito: sin `--rm` el contenedor conserva sus logs si muere (con `--rm` desaparece y el error se pierde), y sin publicar puerto no hay forma de chocar con otro servicio del host. La prueba va por la red.
+y lo mismo con `ludoteca-prod-app`. Sin `--rm` y sin `-p`, a propósito: sin `--rm` el contenedor conserva sus logs si muere (con `--rm` desaparece y el error se pierde), y sin publicar puerto no hay forma de chocar con otro servicio del host.
 
-y lo mismo para producción con `ludoteca-prod-app`, `4000` y `127.0.0.1:4000:4000`. Después:
+Después:
 
 ```sh
 docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'
 docker ps -a --filter name=ludoteca --format '{{.Names}}\t{{.Status}}'
 docker logs --tail 20 ludoteca-stg-app
 docker run --rm --network proxy node:24-alpine \
-  node -e 'fetch("http://ludoteca-stg-app:4001/health").then(r => r.text()).then(console.log)'
+  node -e 'fetch("http://ludoteca-stg-app:4000/health").then(r => r.text()).then(console.log)'
 curl -sS https://ludoteca-stg.floyd303.com/health
 ```
 
-La segunda orden prueba resolución y HTTP **desde dentro de la red** sin depender de las utilidades del contenedor del proxy: la imagen de Nginx Proxy Manager no trae `nslookup` ni `wget`, y `docker exec manager nslookup` falla con «executable file not found». Si la tercera devuelve el JSON del probe, el camino completo funciona y solo falta la aplicación.
+Los dos primeros comprueban que está vivo y con logs; el tercero prueba resolución y HTTP **desde dentro de la red** sin depender de las utilidades del contenedor del proxy (la imagen de Nginx Proxy Manager no trae `nslookup` ni `wget`, y `docker exec manager nslookup` falla con «executable file not found»). El último es la prueba completa: DNS → TLS → proxy → red → contenedor.
 
-Si la tercera devuelve 502 con el contenedor arriba y conectado, el fallo está en el enrutado del proxy, no en la red. Se ve sin abrir la interfaz:
+Si el último devuelve 502 con el contenedor arriba y conectado, el fallo está en el enrutado del proxy, no en la red. Se ve sin abrir la interfaz:
 
 ```sh
 docker exec manager sh -c 'cat /data/nginx/proxy_host/*.conf' | grep -E 'server_name|proxy_pass'
 ```
 
-Tiene que aparecer `proxy_pass http://ludoteca-stg-app:4001;` para `ludoteca-stg.floyd303.com`. Si pone `127.0.0.1` o una IP, ese es el problema.
+Tiene que aparecer `proxy_pass http://ludoteca-stg-app:4000;` para `ludoteca-stg.floyd303.com`. Si pone `127.0.0.1`, una IP o un puerto distinto, ahí está el problema.
 
-**El puerto del host puede estar ocupado.** `127.0.0.1:4000` es un puerto que otro servicio del VPS puede estar usando; el error es `address already in use` y el contenedor no arranca. Se comprueba con `ss -ltnp 'sport = :4000'`. Como el proxy habla con el contenedor por la red y no por el host, basta cambiar `APP_PORT` en el `.env` de ese entorno (por ejemplo `4010`) sin tocar el proxy.
-
-Al terminar, se borra el de mentira, porque ocupa el nombre que necesita el real:
+Al terminar, se borran los de mentira, porque ocupan el nombre que necesitan los reales:
 
 ```sh
-docker rm -f ludoteca-stg-app
+docker rm -f ludoteca-stg-app ludoteca-prod-app
 ```
 
 ### 1.3 Clave SSH de despliegue
@@ -170,14 +167,15 @@ case "$ENV" in prod|stg) ;; *) echo "unknown environment" >&2; exit 2 ;; esac
 BASE="$ROOT/$ENV"
 [ -f "$BASE/.env" ] || { echo "missing $BASE/.env" >&2; exit 2; }
 
-APP_PORT=$(grep -E '^APP_PORT=' "$BASE/.env" | cut -d= -f2)
 COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
-HEALTH="http://127.0.0.1:${APP_PORT:-4000}/health"
+
+# La salud se pregunta dentro del contenedor: no hay puerto publicado en el host.
+health() { $COMPOSE exec -T app node src/cli.js health 2>/dev/null; }
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
   status*)
     $COMPOSE ps
-    curl -fsS "$HEALTH"
+    health
     exit 0
     ;;
   rollback*)
@@ -206,7 +204,7 @@ $COMPOSE up -d --remove-orphans
 ok=0
 i=0
 while [ $i -lt 30 ]; do
-  if curl -fsS "$HEALTH" | grep -q "\"version\":\"$TAG\""; then ok=1; break; fi
+  if health | grep -q "\"version\":\"$TAG\""; then ok=1; break; fi
   i=$((i+1)); sleep 2
 done
 
@@ -233,7 +231,6 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 | Variable | prod | stg | Nota |
 |---|---|---|---|
 | `ENV_NAME` | `prod` | `stg` | Lo usa el compose para el nombre del proyecto y del contenedor |
-| `APP_PORT` | `4000` | `4001` | Puerto del **host**; dentro del contenedor la app escucha siempre en 4000 |
 | `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano |
 | `BASE_URL` | `https://ludoteca.floyd303.com` | `https://ludoteca-stg.floyd303.com` | Enlaces de recuperación y cookies |
 | `TRUST_PROXY_HOPS` | `1` | `1` | Solo el proxy de Nginx; `2` si se activa el de Cloudflare |
@@ -246,9 +243,9 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 | `BGG_TOKEN` | *(vacío hasta que haya token)* | igual | Descarga de miniaturas |
 | `LOG_LEVEL` | `info` | `debug` | — |
 
-Las claves `DNI_KEY` de staging y producción son **distintas**: nunca se copian datos reales a staging, y una clave filtrada en pruebas no abre los DNI de producción.
+No hay `APP_PORT`: no se publica ningún puerto en el host. Si un `.env` lo conserva de una prueba anterior, no molesta, pero no se usa.
 
-Ojo con el puerto: `APP_PORT` es el puerto del host y cambia entre entornos (4000 / 4001), pero el contenedor siempre escucha en 4000 y el mapeo es `127.0.0.1:${APP_PORT}:4000`. Si la app escuchara en `APP_PORT` dentro del contenedor, staging quedaría inalcanzable y el síntoma sería un 502 solo en `ludoteca-stg`.
+Las claves `DNI_KEY` de staging y producción son **distintas**: nunca se copian datos reales a staging, y una clave filtrada en pruebas no abre los DNI de producción.
 
 ### 1.6 Proxy: dos proxy hosts
 
@@ -257,7 +254,7 @@ Ojo con el puerto: `APP_PORT` es el puerto del host y cambia entre entornos (400
 | Domain Names | `ludoteca.floyd303.com` | `ludoteca-stg.floyd303.com` |
 | Scheme | `http` | `http` |
 | Forward Hostname | `ludoteca-prod-app` | `ludoteca-stg-app` |
-| Forward Port | `4000` | `4001` |
+| Forward Port | `4000` | `4000` |
 | Block Common Exploits | ON | ON |
 | Websockets | OFF | OFF |
 | Access List | ninguna | **una con usuario y contraseña** |
@@ -291,12 +288,10 @@ Con la nube gris, el reto HTTP-01 de Let's Encrypt llega directo y no hay caché
 
 ```sh
 sudo ufw allow 80,443/tcp
-sudo ufw deny 4000/tcp
-sudo ufw deny 4001/tcp
 sudo ufw status
 ```
 
-El puerto interno ya se publica en `127.0.0.1`; cerrarlo también en el cortafuegos es la segunda barrera. En el compose, límite de logs:
+No hay puerto interno que cerrar: no se publica ninguno en el host. En el compose, límite de logs:
 
 ```yaml
 logging:
@@ -361,14 +356,14 @@ scp deploy/preflight.sh ubuntu@<vps>:/tmp/preflight.sh
 ssh ubuntu@<vps> sh /tmp/preflight.sh
 ```
 
-Comprueba docker y compose, la red `proxy`, los dos `.env` (permisos, claves obligatorias, puertos y que las `DNI_KEY` no coincidan), el `compose.yaml`, el propietario de `data` y que el UID 10001 escribe, la entrada `command=` de `authorized_keys` con su script y su `sh -n`, el estado de GHCR, disco y hora. No imprime secretos y termina con el número de fallos.
+Comprueba docker y compose, la red `proxy`, los dos `.env` (permisos, claves obligatorias y que las `DNI_KEY` no coincidan), el `compose.yaml`, el propietario de `data` y que el UID 10001 escribe, la entrada `command=` de `authorized_keys` con su script y su `sh -n`, el estado de GHCR, disco y hora. No imprime secretos y termina con el número de fallos.
 
 ### 1.12 Primera cuenta y prueba de humo (en staging)
 
 ```sh
 cd /home/ubuntu/docker/ludoteca/stg
 docker compose run --rm -T app create-admin --email roberto@ejemplo.com   # contraseña por stdin
-curl -fsS http://127.0.0.1:4001/health
+docker compose exec -T app node src/cli.js health
 ```
 
 Después, desde el navegador: entrar, crear el evento con sus franjas, importar el CSV de BGG, descargar imágenes, registrar un jugador de prueba y cerrar el ciclo con cinco juegos (lista E.1). Producción se toca después, con los mismos comandos y las mismas comprobaciones.
@@ -382,7 +377,7 @@ push a una rama  →  PR  →  quality + contract + e2e  →  merge a main
                      │
                      ├─ ssh ubuntu@vps "deploy stg sha-abc1234"   → humo sobre staging
                      └─ ssh ubuntu@vps "deploy prod sha-abc1234"  → .last-good
-                              backup → pull → migrate → up -d → /health dice abc1234
+                              backup → pull → migrate → up -d → health dice abc1234
                                                          rojo → rollback automático
 ```
 
@@ -392,7 +387,7 @@ Sin pipeline, el operador tiene dos verbos: `ssh ubuntu@vps "status prod"` y `ss
 
 ```sh
 make build                      # misma imagen, mismo Dockerfile
-make up                         # compose local con APP_PORT=4000 y volumen ./data
+make up                         # compose local con volumen ./data
 make smoke                      # health + versión + ciclo mínimo por HTTP
 ./deploy/deploy.sh --dry-run    # valida script, permisos de volumen, migrate y healthcheck
 ```
@@ -410,7 +405,8 @@ La imagen que se prueba en local es la que se publica: mismo Dockerfile, misma e
 | Runtime | Node **24 LTS** (verificado: `node:sqlite` funciona sin flag en 24.22.3) |
 | Rutas | `/home/ubuntu/docker/ludoteca/{prod,stg}` |
 | Usuario de despliegue | `ubuntu`, clave ed25519 dedicada con `command=` |
+| Puerto | 4000 dentro del contenedor, en los dos entornos; nada publicado en el host (ADR-019) |
 | Cloudflare | Solo DNS (nube gris); `TRUST_PROXY_HOPS=1` |
 | Dominios | `ludoteca.floyd303.com` y `ludoteca-stg.floyd303.com` |
-| Staging | Mismo VPS, puerto 4001, volumen y clave de cifrado propios, contraseña básica |
+| Staging | Mismo VPS, volumen y clave de cifrado propios, contraseña básica |
 | Copia fuera del VPS | Pendiente (PEN-01) |

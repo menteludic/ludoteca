@@ -42,13 +42,15 @@ for env in prod stg; do
   if [ -f "$base/.env" ]; then
     perms=$(stat -c '%a' "$base/.env")
     [ "$perms" = "600" ] && ok ".env existe (600)" || bad ".env con permisos $perms, debería ser 600"
-    for k in ENV_NAME TAG APP_PORT BASE_URL TRUST_PROXY_HOPS DATABASE_PATH IMAGES_DIR DNI_KEY SMTP_FROM; do
+    for k in ENV_NAME TAG BASE_URL TRUST_PROXY_HOPS DATABASE_PATH IMAGES_DIR DNI_KEY SMTP_FROM; do
       if [ -n "$(env_value "$base/.env" "$k")" ]; then :; else bad "falta $k en .env"; fi
     done
-    port=$(env_value "$base/.env" APP_PORT)
     hops=$(env_value "$base/.env" TRUST_PROXY_HOPS)
-    ok "APP_PORT=$port TRUST_PROXY_HOPS=$hops (1 si Cloudflare es solo DNS)"
+    ok "TRUST_PROXY_HOPS=$hops (1 si Cloudflare es solo DNS)"
     [ "$(env_value "$base/.env" TAG)" = "" ] && bad "TAG vacío"
+    if grep -q '^[[:space:]]*ports:' "$base/compose.yaml" 2>/dev/null; then
+      bad "el compose publica puertos; la app debe vivir solo en la red proxy (ADR-019)"
+    fi
   else
     bad "falta .env"
   fi
@@ -78,11 +80,6 @@ for env in prod stg; do
     fi
   else
     info "sin sudo sin contraseña: no se comprueba la escritura como UID 10001"
-  fi
-  if ss -ltn 2>/dev/null | grep -q ":$port "; then
-    info "puerto $port ya escucha (hay algo desplegado)"
-  else
-    info "puerto $port libre (todavía sin aplicación)"
   fi
 done
 
