@@ -55,8 +55,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: tag
@@ -85,6 +83,10 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: tag
+        # El output de otro job no sobrevive a «Re-run failed jobs», así que la
+        # etiqueta se calcula aquí a partir del commit que se está desplegando.
+        run: echo "tag=sha-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
       - name: Clave de despliegue y host conocido
         env:
           # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
@@ -109,7 +111,7 @@ jobs:
       - name: Desplegar en staging
         run: |
           set +e
-          out=$(ssh vps "deploy stg ${{ needs.image.outputs.tag }}" 2>&1)
+          out=$(ssh vps "deploy stg ${{ steps.tag.outputs.tag }}" 2>&1)
           rc=$?
           printf '%s\n' "$out"
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
@@ -120,12 +122,12 @@ jobs:
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
           body=$(curl -fsS "$@" "https://ludoteca-stg.floyd303.com/health")
           echo "$body"
-          echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
+          echo "$body" | grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\""
       - name: Publicar el fallo en un issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.image.outputs.tag }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           {
             echo "El despliegue en **staging** falló con la etiqueta \`$TAG\`."
@@ -149,6 +151,10 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: tag
+        # El output de otro job no sobrevive a «Re-run failed jobs», así que la
+        # etiqueta se calcula aquí a partir del commit que se está desplegando.
+        run: echo "tag=sha-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
       - name: Clave de despliegue y host conocido
         env:
           # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
@@ -173,7 +179,7 @@ jobs:
       - name: Desplegar en producción
         run: |
           set +e
-          out=$(ssh vps "deploy prod ${{ needs.image.outputs.tag }}" 2>&1)
+          out=$(ssh vps "deploy prod ${{ steps.tag.outputs.tag }}" 2>&1)
           rc=$?
           printf '%s\n' "$out"
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
@@ -182,12 +188,12 @@ jobs:
         run: |
           body=$(curl -fsS "https://ludoteca.floyd303.com/health")
           echo "$body"
-          echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
+          echo "$body" | grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\""
       - name: Publicar el fallo en un issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.image.outputs.tag }}
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           {
             echo "El despliegue en **producción** falló con la etiqueta \`$TAG\`."
