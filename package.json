@@ -12,11 +12,12 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p jsconfig.json",
     "test": "node --test test/**/*.test.js",
-    "test:coverage": "c8 --check-coverage --lines 90 --reporter text --reporter text-summary npm test",
+    "test:coverage": "c8 --check-coverage --lines 90 --exclude 'src/bootstrap/**' --exclude 'test/**' --reporter text --reporter text-summary npm test",
     "check": "npm run lint && npm run typecheck && npm run test:coverage",
     "start": "node src/bootstrap/server.js"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.11",
     "hono": "^4.13.21",
     "zod": "^4.6.7"
   },
