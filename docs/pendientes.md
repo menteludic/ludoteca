@@ -10,7 +10,7 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 |---|---|---|---|---|---|
 | PEN-01 | Copias fuera del VPS | Elegir destino (restic, rclone o `age` + descarga) y dejar la copia semanal cifrada fuera del servidor. Hoy la copia diaria vive en el mismo disco | Roberto | Antes de F6 | Abierto |
 | PEN-31 | HSTS preload | El proxy emite `preload` con dos años. Si el dominio aún puede necesitar HTTP o cambiar de destino, conviene quitar `preload` y bajar a un año hasta que esté estable; con `preload` la vuelta atrás tarda meses | Roberto | Antes de P39 | Abierto |
-| PEN-04 | Acceso a staging | Access List con usuario y contraseña en el proxy host de staging. Verificado el 23/11: responde 502 sin pedir credenciales, así que no está activa | Roberto | P08 | Abierto |
+| PEN-04 | Acceso a staging | Access List con usuario y contraseña en el proxy host de staging. Verificado el 23/11 a las 19:03: `https://ludoteca-stg.floyd303.com/health` responde 200 sin `WWW-Authenticate`, así que no está activa | Roberto | P08 | Abierto |
 | PEN-05 | Correo saliente | Proveedor SMTP, subdominio `mail.floyd303.com` y registros SPF, DKIM y DMARC | Roberto | P15 | Abierto |
 | PEN-06 | Token de BGG | Registrar la aplicación y obtener el token de la API (sin él no hay miniaturas) | Roberto | P20 | Abierto |
 | PEN-07 | Aplicación de Facebook | Solicitud y aprobación, o dejar Facebook desactivado por evento | Roberto | P21 | Abierto |
