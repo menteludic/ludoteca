@@ -7,6 +7,7 @@
 set -eu
 
 ROOT=/home/ubuntu/docker/ludoteca
+IMAGE=ghcr.io/menteludic/ludoteca
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
   "deploy "*)   set -- ${SSH_ORIGINAL_COMMAND#deploy };   ENV=$1; TAG=${2:-} ;;
@@ -24,6 +25,19 @@ COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
 
 # Health is asked inside the container: no port is published on the host.
 health() { $COMPOSE exec -T app node src/cli.js health 2>/dev/null; }
+
+# The image is pulled first: it is the step that fails when the GHCR package is
+# private, and failing here leaves the environment untouched.
+pull_image() {
+  if ! docker pull "$IMAGE:$1" >/dev/null; then
+    {
+      echo "no se pudo descargar $IMAGE:$1"
+      echo "causa probable: el paquete GHCR es privado o el host no tiene credenciales"
+      echo "arreglo: pon el paquete en público, o docker login ghcr.io con un token read:packages"
+    } >&2
+    return 1
+  fi
+}
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
   status*)
@@ -44,12 +58,12 @@ flock -n 9 || { echo "another deploy is running in $ENV" >&2; exit 3; }
 
 PREVIOUS=$(grep -E '^TAG=' "$BASE/.env" | cut -d= -f2)
 
-# 1. Backup before touching anything (keep the last five)
+# 1. Image, then a backup of the data the running version produced
+pull_image "$TAG" || exit 5
 $COMPOSE run --rm -T app backup --to "/data/backups/pre-$TAG.db" --keep 5
 
-# 2. Move the tag, pull, migrate, start
+# 2. Move the tag, migrate, start
 sed -i "s/^TAG=.*/TAG=$TAG/" "$BASE/.env"
-$COMPOSE pull app
 $COMPOSE run --rm -T app migrate
 $COMPOSE up -d --remove-orphans
 
@@ -63,8 +77,8 @@ done
 
 if [ "$ok" -ne 1 ]; then
   echo "healthcheck failed in $ENV, rolling back to $PREVIOUS" >&2
+  pull_image "$PREVIOUS" || exit 5
   sed -i "s/^TAG=.*/TAG=$PREVIOUS/" "$BASE/.env"
-  $COMPOSE pull app
   $COMPOSE up -d --remove-orphans
   exit 4
 fi
