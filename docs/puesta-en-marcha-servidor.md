@@ -446,3 +446,20 @@ Aviso sobre la visibilidad: hacer un paquete público es **irreversible** en Git
 **Nombre del fichero:** tiene que ser `compose.yaml`, con esa extensión. El wrapper lo pasa explícito con `-f`, así que un `compose.yml` no se encuentra y el error resultante no dice por qué. El script ya avisa con un mensaje propio cuando falta.
 
 **Estado real:** el paquete pasó a público el 23/11/2026 y el registro ya lo sirve sin credenciales (token anónimo emitido, `tags/list` con 200 y las etiquetas `sha-266b943`, `sha-f924855`, `sha-31caea8`, `sha-49978ff`). Por tanto `GHCR_USER`/`GHCR_TOKEN` **no son necesarios**; si se llegaron a añadir al `.env`, conviene borrarlos: `env_file` los inyectaría en el contenedor sin necesidad.
+
+## 8. Estado del primer despliegue
+
+Comprobado el 23/11/2026, no deducido:
+
+```sh
+$ curl -sS https://ludoteca-stg.floyd303.com/health
+{"status":"ok","version":"sha-0a668ab","db":"ok","schema":1,"checkedAt":"..."}
+$ curl -sS https://ludoteca.floyd303.com/health
+{"status":"ok","version":"sha-0a668ab","db":"ok","schema":1,"checkedAt":"..."}
+```
+
+La etiqueta `sha-0a668ab` es la del último commit de `main`, así que la versión llegó por el pipeline: `quality` → `image` (GHCR, `sha-<corto>`) → `deploy-staging` → `deploy-production`.
+
+**Trampa que costó una vuelta.** «Re-run failed jobs» vuelve a ejecutar solo los trabajos que fallaron, sin los `outputs` del trabajo de imagen. Por eso la etiqueta ahora se calcula dentro de cada trabajo de despliegue a partir de `github.sha`. Consecuencia práctica: si producción quedó en `skipped`, «Re-run failed jobs» no la relanza; hay que usar «Re-run all jobs» o empujar un commit.
+
+**Diagnóstico sin acceso a los logs.** La API de Actions exige permisos de administración, así que un fallo de despliegue se publica además como issue del repositorio, con las últimas líneas de la salida del `ssh`. Cualquier persona con acceso de lectura al repositorio lo ve. Cerrar los issues cuando el despliegue pase.

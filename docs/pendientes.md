@@ -14,7 +14,6 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-05 | Correo saliente | Proveedor SMTP, subdominio `mail.floyd303.com` y registros SPF, DKIM y DMARC | Roberto | P15 | Abierto |
 | PEN-06 | Token de BGG | Registrar la aplicación y obtener el token de la API (sin él no hay miniaturas) | Roberto | P20 | Abierto |
 | PEN-07 | Aplicación de Facebook | Solicitud y aprobación, o dejar Facebook desactivado por evento | Roberto | P21 | Abierto |
-| PEN-08 | Paquete GHCR público | Cambiar la visibilidad del paquete a pública después del primer push (si no, el servidor necesita un token `read:packages`) | Roberto | P08 | Abierto |
 | PEN-09 | Protección de `main` | Checks obligatorios y prohibición de push directo. Hoy solo existe `quality`; `contract` y `e2e` se añaden cuando existan (PEN-32). Después del primer despliegue verde | Roberto | P04 | Abierto |
 | PEN-10 | Licencia | Decidida AGPL-3.0; falta sustituir `LICENSE` y la mención del README (hoy MIT) | Roberto | Antes de publicar código | Abierto |
 | PEN-11 | Rotación de `DNI_KEY` | Escribir y probar el comando que descifra y vuelve a cifrar los DNI con una clave nueva (P14 lo menciona, no está implementado) | Desarrollo | Antes de producción | Abierto |
@@ -44,3 +43,5 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-28 | Alta de DNS | Los dos nombres resuelven a 82.223.117.97 (nube gris) | 23/11/2026 |
 | PEN-29 | Certificados | Let's Encrypt emitido en los dos, HTTP/2, Force SSL y HSTS `max-age=63072000; preload` | 23/11/2026 |
 | PEN-30 | Clave SSH de despliegue | Ed25519 en GitHub y en `authorized_keys` con `command=` al wrapper de `bin/` | 23/11/2026 |
+| PEN-08 | Paquete GHCR público | El registro sirve `menteludic/ludoteca` sin credenciales: token anónimo emitido y `tags/list` con 200. Verificado antes del primer despliegue | 23/11/2026 |
+| PEN-34 | Primer despliegue real | `ludoteca-stg-app` y `ludoteca-prod-app` sirven `sha-0a668ab` por HTTPS con `db=ok` y `schema=1`, desplegado por el pipeline (quality → image → staging → producción) | 23/11/2026 |
