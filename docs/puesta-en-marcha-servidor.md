@@ -441,4 +441,6 @@ El `.env` ya está fuera del repositorio; el token se queda en el servidor. Si a
 
 Aviso sobre la visibilidad: hacer un paquete público es **irreversible** en GitHub («once you make a package public, you cannot make it private again»).
 
+**Nombre del fichero:** tiene que ser `compose.yaml`, con esa extensión. El wrapper lo pasa explícito con `-f`, así que un `compose.yml` no se encuentra y el error resultante no dice por qué. El script ya avisa con un mensaje propio cuando falta.
+
 **Estado real:** el paquete pasó a público el 23/11/2026 y el registro ya lo sirve sin credenciales (token anónimo emitido, `tags/list` con 200 y las etiquetas `sha-266b943`, `sha-f924855`, `sha-31caea8`, `sha-49978ff`). Por tanto `GHCR_USER`/`GHCR_TOKEN` **no son necesarios**; si se llegaron a añadir al `.env`, conviene borrarlos: `env_file` los inyectaría en el contenedor sin necesidad.

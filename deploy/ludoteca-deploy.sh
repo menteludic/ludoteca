@@ -20,6 +20,10 @@ case "$ENV" in prod|stg) ;; *) echo "unknown environment" >&2; exit 2 ;; esac
 
 BASE="$ROOT/$ENV"
 [ -f "$BASE/.env" ] || { echo "missing $BASE/.env" >&2; exit 2; }
+[ -f "$BASE/compose.yaml" ] || {
+  echo "falta $BASE/compose.yaml; el nombre exacto importa (compose.yml no se encuentra)" >&2
+  exit 2
+}
 
 COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
 
