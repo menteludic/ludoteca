@@ -9,9 +9,8 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | ID | Tema | Qué falta | Quién | Cuándo importa | Estado |
 |---|---|---|---|---|---|
 | PEN-01 | Copias fuera del VPS | Elegir destino (restic, rclone o `age` + descarga) y dejar la copia semanal cifrada fuera del servidor. Hoy la copia diaria vive en el mismo disco | Roberto | Antes de F6 | Abierto |
-| PEN-02 | Alta de DNS | Crear en Cloudflare `ludoteca` y `ludoteca-stg` (A → IP del VPS, nube gris) | Roberto | Antes de P08 | Abierto |
-| PEN-03 | Certificados | Emitir el certificado de los dos nombres en el proxy y activar Force SSL + HSTS | Roberto | Antes de P39 | Abierto |
-| PEN-04 | Acceso a staging | Access List con usuario y contraseña en el proxy host de staging | Roberto | P08 | Abierto |
+| PEN-31 | HSTS preload | El proxy emite `preload` con dos años. Si el dominio aún puede necesitar HTTP o cambiar de destino, conviene quitar `preload` y bajar a un año hasta que esté estable; con `preload` la vuelta atrás tarda meses | Roberto | Antes de P39 | Abierto |
+| PEN-04 | Acceso a staging | Access List con usuario y contraseña en el proxy host de staging. Verificado el 23/11: responde 502 sin pedir credenciales, así que no está activa | Roberto | P08 | Abierto |
 | PEN-05 | Correo saliente | Proveedor SMTP, subdominio `mail.floyd303.com` y registros SPF, DKIM y DMARC | Roberto | P15 | Abierto |
 | PEN-06 | Token de BGG | Registrar la aplicación y obtener el token de la API (sin él no hay miniaturas) | Roberto | P20 | Abierto |
 | PEN-07 | Aplicación de Facebook | Solicitud y aprobación, o dejar Facebook desactivado por evento | Roberto | P21 | Abierto |
@@ -39,4 +38,7 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-24 | Terminación TLS | Nginx Proxy Manager; la app expone HTTP en un puerto interno (ADR-016) | 23/11/2026 |
 | PEN-25 | Cloudflare | Solo DNS (nube gris); `TRUST_PROXY_HOPS=1` | 23/11/2026 |
 | PEN-26 | Entrega continua | Actions + GHCR con etiqueta por SHA + despliegue por SSH (ADR-017); Portainer como panel (ADR-018) | 23/11/2026 |
-| PEN-27 | Nombres | `ludoteca.floyd303.com` y `ludoteca-stg.floyd303.com`; staging con contraseña básica en el primer despliegue | 23/11/2026 |
+| PEN-27 | Nombres | `ludoteca.floyd303.com` y `ludoteca-stg.floyd303.com` | 23/11/2026 |
+| PEN-28 | Alta de DNS | Los dos nombres resuelven a 82.223.117.97 (nube gris) | 23/11/2026 |
+| PEN-29 | Certificados | Let's Encrypt emitido en los dos, HTTP/2, Force SSL y HSTS `max-age=63072000; preload` | 23/11/2026 |
+| PEN-30 | Clave SSH de despliegue | Ed25519 en GitHub y en `authorized_keys` con `command=` al wrapper de `bin/` | 23/11/2026 |

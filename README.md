@@ -35,6 +35,7 @@ Sin Event Sourcing: tablas de estado y auditoría de solo anexión con hash enca
 ```
 .
 ├── README.md          Este fichero
+├── deploy/            Compose de servidor y comprobador previo
 └── docs/              Documentación de proyecto, un fichero por área
     ├── README.md      Índice de áreas
     ├── guia-de-usuario.md

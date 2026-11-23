@@ -31,7 +31,7 @@ Consecuencias que afectan al código:
 
 - La app escucha HTTP en `4000` dentro del contenedor. En el host se publica **solo en `127.0.0.1`**: el proxy la alcanza por la red Docker y el script de despliegue hace el healthcheck sin abrir nada a internet.
 - Cloudflare queda en **solo DNS**, como las demás aplicaciones del servidor. Hay un único proxy delante: `TRUST_PROXY_HOPS=1`. Si algún día se activa el proxy de Cloudflare, pasa a `2`.
-- Las cabeceras de seguridad (CSP, HSTS, `nosniff`, `Referrer-Policy`) las emite la app. El proxy no las repite: dos CSP se suman y rompen la interfaz.
+- El proxy ya emite HSTS (verificado por fuera: `max-age=63072000; preload`). La app emite CSP, `Referrer-Policy`, `nosniff` y `frame-ancestors`; **no** repite HSTS ni nada que ponga el proxy. Dos CSP se suman y rompen la interfaz.
 - El límite de subida y los timeouts largos se configuran en el proxy, no en la app.
 - `/health` es la comprobación del despliegue y la de la monitorización externa, e incluye el SHA desplegado.
 
@@ -42,6 +42,7 @@ Consecuencias que afectan al código:
 Se usa el usuario `ubuntu` que ya existe (está en el grupo `docker`), sin crear uno nuevo. Los datos pertenecen al UID del usuario de la imagen (`10001`):
 
 ```sh
+# el CLI de la app escribe en data/backups (en plural)
 mkdir -p /home/ubuntu/docker/ludoteca/{prod,stg}/data/{images,backups}
 sudo chown -R 10001:10001 /home/ubuntu/docker/ludoteca/prod/data
 sudo chown -R 10001:10001 /home/ubuntu/docker/ludoteca/stg/data
@@ -82,14 +83,14 @@ ssh-keygen -t ed25519 -C "github-actions@ludoteca" -N "" -f ./ludoteca_deploy
 La privada va a GitHub Secrets como `SSH_KEY`. La pública, en `/home/ubuntu/.ssh/authorized_keys`, **con el wrapper delante**:
 
 ```
-command="/usr/local/bin/ludoteca-deploy",no-pty,no-agent-forwarding,no-X11-forwarding,no-port-forwarding ssh-ed25519 AAAA... github-actions@ludoteca
+command="/home/ubuntu/docker/ludoteca/bin/ludoteca-deploy",no-pty,no-agent-forwarding,no-X11-forwarding,no-port-forwarding ssh-ed25519 AAAA... github-actions@ludoteca
 ```
 
 Con `command=`, la clave no abre shell: solo invoca el wrapper, y el wrapper solo acepta `deploy <entorno> <tag>`, `rollback <entorno>` y `status <entorno>`.
 
 ### 1.4 El wrapper de despliegue
 
-`/usr/local/bin/ludoteca-deploy`, propiedad de `root:root`, modo `0755`. Es infraestructura, no código: no se toca en cada despliegue.
+`/home/ubuntu/docker/ludoteca/bin/ludoteca-deploy`, propiedad de `root:root`, modo `0755` (si es de `ubuntu` funciona igual, pero cualquiera con esa cuenta puede reescribirlo). Es infraestructura, no código: no se toca en cada despliegue. La ruta de `authorized_keys` y la del fichero tienen que coincidir exactamente.
 
 ```sh
 #!/bin/sh
@@ -172,6 +173,7 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 
 | Variable | prod | stg | Nota |
 |---|---|---|---|
+| `ENV_NAME` | `prod` | `stg` | Lo usa el compose para el nombre del proyecto y del contenedor |
 | `APP_PORT` | `4000` | `4001` | Publicado solo en `127.0.0.1` |
 | `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano |
 | `BASE_URL` | `https://ludoteca.floyd303.com` | `https://ludoteca-stg.floyd303.com` | Enlaces de recuperación y cookies |
@@ -265,7 +267,18 @@ La retención la hace el propio comando (`--keep`), porque los ficheros son del 
 
 Si el paquete queda privado, el servidor necesita `docker login ghcr.io` con un token `readonly` (`read:packages`) en `/home/ubuntu/.docker/config.json` con modo `0600`. Preferible público: menos credenciales en el servidor.
 
-### 1.11 Primera cuenta y prueba de humo (en staging)
+### 1.11 Comprobación previa (preflight)
+
+Antes del primer despliegue, y cada vez que se toque el servidor, se pasa el comprobador de solo lectura que está en el repo:
+
+```sh
+scp deploy/preflight.sh ubuntu@<vps>:/tmp/preflight.sh
+ssh ubuntu@<vps> sh /tmp/preflight.sh
+```
+
+Comprueba docker y compose, la red `proxy`, los dos `.env` (permisos, claves obligatorias, puertos y que las `DNI_KEY` no coincidan), el `compose.yaml`, el propietario de `data` y que el UID 10001 escribe, la entrada `command=` de `authorized_keys` con su script y su `sh -n`, el estado de GHCR, disco y hora. No imprime secretos y termina con el número de fallos.
+
+### 1.12 Primera cuenta y prueba de humo (en staging)
 
 ```sh
 cd /home/ubuntu/docker/ludoteca/stg
