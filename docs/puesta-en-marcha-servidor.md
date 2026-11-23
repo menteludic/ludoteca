@@ -284,6 +284,8 @@ Si el paquete queda privado, el servidor necesita `docker login ghcr.io` con un 
 
 **Qué es `SSH_KNOWN_HOSTS`.** Es la clave pública del *servidor*, no la del usuario: la que el SSH del VPS presenta al conectarse. GitHub la compara con la que tiene guardada y, si no coincide, aborta la conexión. Sirve para que un pipeline no entregue la clave de despliegue a un impostor que se haga pasar por la IP del VPS.
 
+**Cómo falla cuando está mal.** El síntoma es un `exit code 255` sin más explicación: `No ED25519 host key is known for <host> and you have requested strict checking`. Antes de conectar, el pipeline comprueba los dos secretos y dice **cuál** está mal formado (`SSH_KEY no contiene una clave privada OpenSSH` o `SSH_KNOWN_HOSTS no contiene una línea de known_hosts válida`), así que ese mensaje es el que hay que buscar en el log.
+
 Cómo se comprueba antes de fiarse (en el VPS):
 
 ```sh
