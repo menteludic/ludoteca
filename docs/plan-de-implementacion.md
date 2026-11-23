@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Plan de ejecución de la aplicación de la Ludoteca, derivado del documento de proyecto v1.0 (`docs/`). Cada paso es una unidad que se puede revisar y aceptar por separado: tiene un entregable concreto, una comprobación que se ejecuta y una salida que se pega. Las fases F0–F6 y las horas son las del capítulo 19; aquí se abren en pasos.
+Plan de ejecución de la aplicación de la Ludoteca, derivado del documento de proyecto v1.0 (`docs/`). Cada paso es una unidad que se puede revisar y aceptar por separado: tiene un entregable concreto, una comprobación que se ejecuta y una salida que se pega. Las fases F0–F6 y las horas son las del capítulo 19; aquí se abren en pasos. La topología de despliegue (Nginx Proxy Manager, GHCR y SSH) está en el ADR-016 y el ADR-017, y los comandos del servidor en `puesta-en-marcha-servidor.md`.
 
 ## 1. Cómo se audita un paso
 
@@ -28,8 +28,8 @@ Cuando un paso no se pueda ejecutar (sin VPS, sin token de BGG, sin aplicación 
 | P04 | CI (GitHub Actions o `make check` en el runner acordado): lint, tipos, pruebas con cobertura, `npm audit`, revisión de secretos | Pipeline en verde en el primer push; un commit con un `class` a propósito lo pone rojo |
 | P05 | HTTP base: Hono, `GET /health`, errores `application/problem+json` con código estable, `request-id` y logs JSON sin PII | Prueba de contrato de `/health` y de forma del error; log de una petición revisado a mano |
 | P06 | Esquema SQLite del Anexo C como migración `001_init.sql`, runner idempotente, `WAL` y `foreign_keys` activos | Prueba de integración: BD en fichero temporal, índices únicos parciales rechazan dos `DELIVERED` del mismo juego y dos préstamos vivos del mismo jugador |
-| P07 | `Dockerfile`, `docker-compose.yml` (app + Caddy), volumen `/srv/ludoteca/data:/data`, `.env.example` | `docker compose up` y `/health` responde 200; recrear el contenedor conserva la BD |
-| P08 | Despliegue automático de la imagen en el VPS con TLS | URL pública con `/health` 200 desde fuera; **bloqueado por sysop/dominio** |
+| P07 | `Dockerfile` con UID 10001 y compose de desarrollo: la app sirve HTTP en `APP_PORT` (4000) publicada en `127.0.0.1`, volumen `./data:/data`, `.env.example` completo; CLI `migrate`, `backup`, `create-admin` | `docker compose up` y `/health` con base, esquema y versión; `migrate` dos veces seguidas no cambia nada; recrear el contenedor conserva la BD |
+| P08 | Imagen `ghcr.io/menteludic/ludoteca:sha-<corto>` y despliegue por SSH con el wrapper del servidor: backup → pull → migrate → `up -d` → healthcheck que exige el SHA → rollback si no | Desplegar dos versiones seguidas: la segunda se sirve y `.last-good` apunta a la primera; desplegar una imagen que no arranca vuelve sola a la anterior; **requiere del sysop: usuario `deploy`, clave restringida, proxy host en NPM** |
 
 ### F1 · Núcleo — 68 h · puerta: un evento abre y cierra solo y el catálogo está importado
 
@@ -90,7 +90,7 @@ Cuando un paso no se pueda ejecutar (sin VPS, sin token de BGG, sin aplicación 
 
 | Paso | Entregable | Verificación |
 |---|---|---|
-| P39 | Producción: DNS y TLS, correo con SPF/DKIM/DMARC, primera cuenta administrador, catálogo real, evento y franjas, lista E.1 completa | Enlace de recuperación que llega a la bandeja de entrada; prueba de humo con cinco juegos en dos puestos |
+| P39 | Producción: proxy host y certificado en NPM, Cloudflare en Full (strict), SPF/DKIM/DMARC, primera cuenta, catálogo real, evento y franjas, lista E.1 | Enlace de recuperación que llega a la bandeja; `https://ludoteca.floyd303.com/health` declara el SHA desplegado; humo con cinco juegos en dos puestos |
 | P40 | Evento con guardia; cierre, informe, copia de seguridad y restauración cronometrada; KPIs en el documento | Restauración ≤ 30 min verificada; KPI-01..04 anotados con su medición |
 
 ## 3. Orden y dependencias
@@ -106,7 +106,8 @@ Cuando un paso no se pueda ejecutar (sin VPS, sin token de BGG, sin aplicación 
 
 | Bloqueo | Afecta a | Quién lo desbloquea | Plan si no llega |
 |---|---|---|---|
-| VPS y dominio | P08, P39 | Sysop | Se desarrolla contra `docker compose` local; F0 se cierra sin la puerta de despliegue |
+| Usuario `deploy`, clave SSH y proxy host en NPM | P08, P39 | Roberto (sysop) | Mientras no existan: se despliega a mano con el mismo script y la puerta de F0 se cierra en local |
+| Destino de las copias fuera del VPS | P39 | Roberto | Copia diaria en `/data/backups` y traslado manual hasta acordar `restic`/`rclone` |
 | Token de aplicación de BGG | P20 | Roberto (registro en BGG) | Catálogo sin miniaturas y marcador con la inicial; `image_url` del CSV como respaldo |
 | Aplicación de Facebook | P21 | Roberto / la asociación | Facebook desactivado por evento; Google y cuenta local cubren el caso |
 | Proveedor de correo y registros DNS | P15, P39 | Sysop | Doble del transporte en pruebas; en producción, enlace a bandeja de spam (documentado) |
