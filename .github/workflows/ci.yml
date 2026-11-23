@@ -82,6 +82,10 @@ jobs:
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
+            { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
+          grep -Eq '^[^ ]+ ssh-ed25519 AAAA[A-Za-z0-9+/=]+$' ~/.ssh/known_hosts ||
+            { echo "SSH_KNOWN_HOSTS no contiene una línea de known_hosts válida"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
@@ -107,6 +111,10 @@ jobs:
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
           printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
+            { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
+          grep -Eq '^[^ ]+ ssh-ed25519 AAAA[A-Za-z0-9+/=]+$' ~/.ssh/known_hosts ||
+            { echo "SSH_KNOWN_HOSTS no contiene una línea de known_hosts válida"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
