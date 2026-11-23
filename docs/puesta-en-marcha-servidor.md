@@ -122,10 +122,25 @@ docker exec manager sh -c 'cat /data/nginx/proxy_host/*.conf' | grep -E 'server_
 
 Tiene que aparecer, en el fichero de `ludoteca-stg.floyd303.com`, `set $server "ludoteca-stg-app";`, `set $port 4000;` y `proxy_pass $forward_scheme://$server:$port;`. El proxy de Nginx no escribe la URL fija: usa variables, así que buscar solo `proxy_pass` no basta. Si `$server` es `127.0.0.1`, una IP o un puerto distinto, ahí está el problema.
 
-Y si sigue sin estar claro, el registro de errores del proxy dice la causa exacta: `could not be resolved` es nombre mal escrito o red mal conectada; `connect() failed` es que resuelve pero nadie escucha en ese puerto.
+Y si sigue sin estar claro, el registro del contenedor del proxy dice la causa exacta: `could not be resolved` es nombre mal escrito o red mal conectada; `connect() failed` es que resuelve pero nadie escucha en ese puerto.
 
 ```sh
-docker exec manager sh -c 'tail -n 20 /data/logs/error.log'
+docker logs --tail 20 manager | grep -iE 'error|could not|connect\(\)'
+```
+
+**La prueba que separa red de configuración:** ejecutar un contenedor que comparte la red del propio proxy. Si eso resuelve el nombre, la red del proxy está bien y el fallo solo puede estar en el *Forward Hostname*:
+
+```sh
+docker run --rm --network container:manager node:24-alpine \
+  node -e 'fetch("http://ludoteca-stg-app:4000/health").then(r => r.text()).then(console.log)'
+```
+
+**Ojo con el nombre:** tiene que ser el nombre completo del contenedor, `ludoteca-stg-app` y `ludoteca-prod-app`, con el sufijo `-app` y el puerto 4000. Un `set $server "ludoteca-stg";` con el puerto 4001 da 502 con los contenedores perfectamente sanos.
+
+**Y si la prueba directa por HTTP devuelve 301**, no es un fallo: es *Force SSL* redirigiendo. Para saltarse TLS, Cloudflare y el DNS de una vez:
+
+```sh
+curl -sS --resolve ludoteca-stg.floyd303.com:443:127.0.0.1 https://ludoteca-stg.floyd303.com/health
 ```
 
 Al terminar, se borran los de mentira, porque ocupan el nombre que necesitan los reales:
