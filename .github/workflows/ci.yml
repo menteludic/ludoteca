@@ -1,0 +1,119 @@
+name: ci
+
+# Pruebas en cada rama y PR; imagen y despliegue solo cuando el código entra en main.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: ghcr.io/menteludic/ludoteca
+
+jobs:
+  quality:
+    name: quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:coverage
+      - name: Audit de dependencias
+        run: npm audit --audit-level=high
+      - name: Material de clave privada
+        run: |
+          if grep -rInE 'BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY' \
+              --include='*.js' --include='*.json' --include='*.yml' --include='*.md' .; then
+            echo "Se ha encontrado material de clave privada en el repositorio"
+            exit 1
+          fi
+
+  image:
+    name: image
+    needs: quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: tag
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.tag.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  deploy-staging:
+    name: deploy-staging
+    needs: image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Clave de despliegue y host conocido
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
+            "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Desplegar en staging
+        run: ssh vps "deploy stg ${{ needs.image.outputs.tag }}"
+      - name: Comprobar por HTTPS
+        run: |
+          AUTH="${{ secrets.STG_BASIC_AUTH }}"
+          if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
+          body=$(curl -fsS "$@" "https://ludoteca-stg.floyd303.com/health")
+          echo "$body"
+          echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
+
+  deploy-production:
+    name: deploy-production
+    needs: [image, deploy-staging]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Clave de despliegue y host conocido
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_deploy ~/.ssh/known_hosts
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
+            "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+      - name: Desplegar en producción
+        run: ssh vps "deploy prod ${{ needs.image.outputs.tag }}"
+      - name: Comprobar por HTTPS
+        run: |
+          body=$(curl -fsS "https://ludoteca.floyd303.com/health")
+          echo "$body"
+          echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
