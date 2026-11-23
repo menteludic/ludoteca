@@ -29,6 +29,7 @@ Base: **documento de proyecto v1.0** (23 de noviembre de 2026). Los capítulos s
 | `18-operacion.md` | Puesta en marcha, tareas programadas, runbook y contingencias |
 | `19-plan.md` | Calendario, esfuerzo y coste |
 | `20-mejoras-futuras.md` | Lo que se ha dejado fuera y por qué |
+| `plan-de-implementacion.md` | **Documento vivo.** Los 40 pasos de ejecución con su verificación y las puertas de fase |
 
 ## Anexos
 
