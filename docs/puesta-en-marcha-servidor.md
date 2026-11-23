@@ -96,14 +96,18 @@ docker exec <contenedor-del-proxy> wget -qO- http://ludoteca-prod-app:4000/healt
 Los contenedores de la aplicación los crea el compose del pipeline; no se crean a mano y no existen hasta que hay imagen en GHCR (`docker compose up -d` falla con `manifest unknown` antes). Para comprobar **hoy** que la red, el proxy y el TLS están bien, se levanta un contenedor de mentira con el nombre exacto que usará el compose:
 
 ```sh
-docker run -d --rm --name ludoteca-stg-app --network proxy -p 127.0.0.1:4001:4001 \
+docker run -d --name ludoteca-stg-app --network proxy \
   node:24-alpine node -e 'require("node:http").createServer((_,res)=>{res.setHeader("content-type","application/json");res.end(JSON.stringify({status:"ok",version:"probe"}))}).listen(4001,"0.0.0.0")'
 ```
+
+Sin `--rm` y sin `-p`, a propósito: sin `--rm` el contenedor conserva sus logs si muere (con `--rm` desaparece y el error se pierde), y sin publicar puerto no hay forma de chocar con otro servicio del host. La prueba va por la red.
 
 y lo mismo para producción con `ludoteca-prod-app`, `4000` y `127.0.0.1:4000:4000`. Después:
 
 ```sh
 docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'
+docker ps -a --filter name=ludoteca --format '{{.Names}}\t{{.Status}}'
+docker logs --tail 20 ludoteca-stg-app
 docker run --rm --network proxy node:24-alpine \
   node -e 'fetch("http://ludoteca-stg-app:4001/health").then(r => r.text()).then(console.log)'
 curl -sS https://ludoteca-stg.floyd303.com/health
