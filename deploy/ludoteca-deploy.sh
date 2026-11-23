@@ -79,16 +79,22 @@ flock -n 9 || { echo "another deploy is running in $ENV" >&2; exit 3; }
 
 PREVIOUS=$(grep -E '^TAG=' "$BASE/.env" | cut -d= -f2)
 
-# 1. Image, then a backup of the data the running version produced
-pull_image "$TAG" || exit 5
-$COMPOSE run --rm -T app backup --to "/data/backups/pre-$TAG.db" --keep 5
+# `docker compose run` replaces the image CMD, so the interpreter is named
+# explicitly; `run app backup` would try to exec a binary called backup.
+run_cli() { $COMPOSE run --rm -T app node src/cli.js "$@"; }
 
-# 2. Move the tag, migrate, start
+# 1. Image first: if the version cannot be fetched, nothing on disk changes.
+pull_image "$TAG" || exit 5
+
+# 2. Point the environment at it, then back up the data it is about to find.
 sed -i "s/^TAG=.*/TAG=$TAG/" "$BASE/.env"
-$COMPOSE run --rm -T app migrate
+run_cli backup --to "/data/backups/pre-$TAG.db" --keep 5
+
+# 3. Migrate and start
+run_cli migrate
 $COMPOSE up -d --remove-orphans
 
-# 3. Verify the version actually running
+# 4. Verify the version actually running
 ok=0
 i=0
 while [ $i -lt 30 ]; do
