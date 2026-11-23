@@ -33,6 +33,8 @@ jobs:
       - run: npm run test:coverage
       - name: Audit de dependencias
         run: npm audit --audit-level=high
+      - name: Gate del despliegue
+        run: sh deploy/gate-selftest.sh
       - name: Material de clave privada
         run: |
           # El propio workflow nombra el marcador que busca, así que se excluye.

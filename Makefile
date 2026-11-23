@@ -3,12 +3,12 @@
 NODE ?= node
 NPM ?= npm
 
-.PHONY: install check lint typecheck test coverage start
+.PHONY: install check lint typecheck test coverage gate start
 
 install:
 	$(NPM) ci
 
-check: lint typecheck coverage
+check: lint typecheck coverage gate
 
 lint:
 	$(NPM) run lint
@@ -21,6 +21,9 @@ test:
 
 coverage:
 	$(NPM) run test:coverage
+
+gate:
+	sh deploy/gate-selftest.sh
 
 start:
 	$(NODE) src/bootstrap/server.js

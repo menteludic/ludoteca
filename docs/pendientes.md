@@ -29,7 +29,7 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-20 | Segundo administrador de aplicación | Nombrar una segunda cuenta con ese rol; hoy todo depende de una persona | Roberto | Antes de F6 | Abierto |
 | PEN-21 | Textos legales | Revisar la política de privacidad y el aviso de mayoría de edad con la junta antes de publicarlos | Roberto + junta | Antes de P39 | Abierto |
 | PEN-32 | `contract` y `e2e` en el pipeline | Los dos trabajos dependen de piezas que aún no existen (`openapi.yaml` en F1 y la interfaz en F2). Hasta entonces el workflow solo lleva `quality`, `image` y los dos despliegues | Desarrollo | F1 y F2 | Abierto |
-| PEN-33 | Rollback del wrapper | El camino de vuelta ante un healthcheck fallido nunca se ha ejecutado; la primera prueba real será forzando una etiqueta inexistente en staging | Desarrollo | Antes de producción | Abierto |
+| PEN-33 | Rollback del wrapper | Cubierto con dobles en `deploy/gate-selftest.sh` (12 comprobaciones, incluida la vuelta atrás si el health no coincide). Queda la prueba contra el servidor real: forzar una etiqueta inexistente en staging | Desarrollo | Antes de producción | Abierto |
 
 ## Cerrados
 
