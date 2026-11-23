@@ -1,0 +1,32 @@
+{
+  "name": "ludoteca",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Game lending system for association events: catalogue, requests, counter and stats.",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p jsconfig.json",
+    "test": "node --test test/**/*.test.js",
+    "test:coverage": "c8 --check-coverage --lines 90 --reporter text --reporter text-summary npm test",
+    "check": "npm run lint && npm run typecheck && npm run test:coverage",
+    "start": "node src/bootstrap/server.js"
+  },
+  "dependencies": {
+    "hono": "^4.13.21",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.19.2",
+    "c8": "^12.0.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-jsdoc": "^65.5.3",
+    "globals": "^17.14.0",
+    "typescript": "^5.9.3"
+  }
+}
