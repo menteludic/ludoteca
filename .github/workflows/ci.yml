@@ -36,7 +36,7 @@ jobs:
       - name: Material de clave privada
         run: |
           # El propio workflow nombra el marcador que busca, así que se excluye.
-          hits=$(grep -rIlE -- '-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----' \
+          hits=$(grep -rIlE -e '-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----' \
             --include='*.js' --include='*.json' --include='*.yml' --include='*.md' \
             --exclude-dir=.github --exclude-dir=node_modules . || true)
           if [ -n "$hits" ]; then
