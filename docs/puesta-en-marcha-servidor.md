@@ -169,77 +169,14 @@ Con `command=`, la clave no abre shell: solo invoca el wrapper, y el wrapper sol
 
 `/home/ubuntu/docker/ludoteca/bin/ludoteca-deploy`, propiedad de `root:root`, modo `0755` (si es de `ubuntu` funciona igual, pero cualquiera con esa cuenta puede reescribirlo). Es infraestructura, no código: no se toca en cada despliegue. La ruta de `authorized_keys` y la del fichero tienen que coincidir exactamente.
 
+El fichero está en el repositorio, en `deploy/ludoteca-deploy.sh`: es la fuente única y se instala tal cual, sin copiar y pegar desde este documento.
+
 ```sh
-#!/bin/sh
-# Deploy gate for ludoteca. Accepts: deploy <prod|stg> <tag> | rollback <env> | status <env>
-set -eu
-
-ROOT=/home/ubuntu/docker/ludoteca
-
-case "${SSH_ORIGINAL_COMMAND:-}" in
-  "deploy "*)   set -- ${SSH_ORIGINAL_COMMAND#deploy };   ENV=$1; TAG=${2:-} ;;
-  "rollback "*) set -- ${SSH_ORIGINAL_COMMAND#rollback }; ENV=$1; TAG="" ;;
-  "status "*)   set -- ${SSH_ORIGINAL_COMMAND#status };   ENV=$1; TAG="" ;;
-  *) echo "denied" >&2; exit 1 ;;
-esac
-
-case "$ENV" in prod|stg) ;; *) echo "unknown environment" >&2; exit 2 ;; esac
-
-BASE="$ROOT/$ENV"
-[ -f "$BASE/.env" ] || { echo "missing $BASE/.env" >&2; exit 2; }
-
-COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
-
-# La salud se pregunta dentro del contenedor: no hay puerto publicado en el host.
-health() { $COMPOSE exec -T app node src/cli.js health 2>/dev/null; }
-
-case "${SSH_ORIGINAL_COMMAND:-}" in
-  status*)
-    $COMPOSE ps
-    health
-    exit 0
-    ;;
-  rollback*)
-    TAG=$(cat "$BASE/.last-good")
-    ;;
-  *)
-    printf '%s' "$TAG" | grep -Eq '^[0-9a-f]{7,40}$' || { echo "invalid tag" >&2; exit 2; }
-    ;;
-esac
-
-exec 9>"$BASE/.deploy.lock"
-flock -n 9 || { echo "another deploy is running in $ENV" >&2; exit 3; }
-
-PREVIOUS=$(grep -E '^TAG=' "$BASE/.env" | cut -d= -f2)
-
-# 1. Backup before touching anything (keep the last five)
-$COMPOSE run --rm -T app backup --to "/data/backups/pre-$TAG.db" --keep 5
-
-# 2. Move the tag, pull, migrate, start
-sed -i "s/^TAG=.*/TAG=$TAG/" "$BASE/.env"
-$COMPOSE pull app
-$COMPOSE run --rm -T app migrate
-$COMPOSE up -d --remove-orphans
-
-# 3. Verify the version actually running
-ok=0
-i=0
-while [ $i -lt 30 ]; do
-  if health | grep -q "\"version\":\"$TAG\""; then ok=1; break; fi
-  i=$((i+1)); sleep 2
-done
-
-if [ "$ok" -ne 1 ]; then
-  echo "healthcheck failed in $ENV, rolling back to $PREVIOUS" >&2
-  sed -i "s/^TAG=.*/TAG=$PREVIOUS/" "$BASE/.env"
-  $COMPOSE pull app
-  $COMPOSE up -d --remove-orphans
-  exit 4
-fi
-
-echo "$PREVIOUS" > "$BASE/.last-good"
-echo "deployed $ENV $TAG (previous $PREVIOUS)"
+sudo install -m 0755 -o root -g root deploy/ludoteca-deploy.sh \
+  /home/ubuntu/docker/ludoteca/bin/ludoteca-deploy
 ```
+
+Acepta tres verbos y valida el formato de la etiqueta (`sha-` y 7 a 40 caracteres hexadecimales); cualquier otra cosa se rechaza antes de tocar nada.
 
 Tres decisiones que conviene entender: la migración corre **antes** de arrancar y como paso aparte (nunca en el `entrypoint`); el healthcheck exige que `/health` declare el tag desplegado, no un simple 200; y el `flock` impide que dos despliegues pisen el mismo entorno.
 
@@ -252,7 +189,7 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 | Variable | prod | stg | Nota |
 |---|---|---|---|
 | `ENV_NAME` | `prod` | `stg` | Lo usa el compose para el nombre del proyecto y del contenedor |
-| `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano |
+| `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano. Si se pierde, `TAG=sha-0000000` sirve de marcador: no hay imagen con ese nombre y el primer despliegue lo sustituye |
 | `BASE_URL` | `https://ludoteca.floyd303.com` | `https://ludoteca-stg.floyd303.com` | Enlaces de recuperación y cookies |
 | `TRUST_PROXY_HOPS` | `1` | `1` | Solo el proxy de Nginx; `2` si se activa el de Cloudflare |
 | `NODE_ENV` | `production` | `production` | — |
