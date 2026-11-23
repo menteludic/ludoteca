@@ -78,6 +78,9 @@ jobs:
     name: deploy-staging
     needs: image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Clave de despliegue y host conocido
@@ -94,7 +97,13 @@ jobs:
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
       - name: Desplegar en staging
-        run: ssh vps "deploy stg ${{ needs.image.outputs.tag }}"
+        run: |
+          set +e
+          out=$(ssh vps "deploy stg ${{ needs.image.outputs.tag }}" 2>&1)
+          rc=$?
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
+          exit $rc
       - name: Comprobar por HTTPS
         run: |
           AUTH="${{ secrets.STG_BASIC_AUTH }}"
@@ -102,11 +111,32 @@ jobs:
           body=$(curl -fsS "$@" "https://ludoteca-stg.floyd303.com/health")
           echo "$body"
           echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
+      - name: Publicar el fallo en un issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.image.outputs.tag }}
+        run: |
+          {
+            echo "El despliegue en **staging** falló con la etiqueta \`$TAG\`."
+            echo
+            echo '```'
+            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "sin salida capturada"
+            echo '```'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/body.md"
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Despliegue en staging falló ($TAG)" \
+            --body-file "$RUNNER_TEMP/body.md"
 
   deploy-production:
     name: deploy-production
     needs: [image, deploy-staging]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Clave de despliegue y host conocido
@@ -123,9 +153,33 @@ jobs:
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
       - name: Desplegar en producción
-        run: ssh vps "deploy prod ${{ needs.image.outputs.tag }}"
+        run: |
+          set +e
+          out=$(ssh vps "deploy prod ${{ needs.image.outputs.tag }}" 2>&1)
+          rc=$?
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
+          exit $rc
       - name: Comprobar por HTTPS
         run: |
           body=$(curl -fsS "https://ludoteca.floyd303.com/health")
           echo "$body"
           echo "$body" | grep -q "\"version\":\"${{ needs.image.outputs.tag }}\""
+      - name: Publicar el fallo en un issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.image.outputs.tag }}
+        run: |
+          {
+            echo "El despliegue en **producción** falló con la etiqueta \`$TAG\`."
+            echo
+            echo '```'
+            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "sin salida capturada"
+            echo '```'
+            echo
+            echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          } > "$RUNNER_TEMP/body.md"
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Despliegue en producción falló ($TAG)" \
+            --body-file "$RUNNER_TEMP/body.md"
