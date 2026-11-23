@@ -61,16 +61,35 @@ El proxy resuelve el contenedor por su nombre de servicio, así que los dos tien
 
 ```sh
 docker network create proxy 2>/dev/null || true
-docker inspect nginx-proxy-manager -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+docker ps --format '{{.Names}}\t{{.Image}}' | grep -i proxy     # nombre real del contenedor
+docker network connect proxy <contenedor-del-proxy>
+docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'
 ```
 
-Si `proxy` no aparece en la segunda orden, conecta el contenedor del proxy:
+La última orden tiene que listar el proxy y, cuando estén levantados, `ludoteca-prod-app` y `ludoteca-stg-app`. `docker network connect` no reinicia nada y surte efecto al instante.
+
+**Persistencia:** esa conexión se pierde si el contenedor del proxy se recrea (actualizar la imagen, por ejemplo). Para que sobreviva, en el compose del proxy (o en su stack de Portainer) hay que declarar la red:
+
+```yaml
+services:
+  app:
+    networks:
+      - proxy
+networks:
+  proxy:
+    external: true
+```
+
+Nuestro `deploy/compose.yaml` ya declara `networks: [proxy]` y `container_name: ludoteca-${ENV_NAME}-app`; no hay nada que cambiar de este lado.
+
+**Comprobación de que resuelven el uno al otro** (antes del primer despliegue fallará por contenedor inexistente, después no):
 
 ```sh
-docker network connect proxy nginx-proxy-manager
+docker exec <contenedor-del-proxy> nslookup ludoteca-prod-app
+docker exec <contenedor-del-proxy> wget -qO- http://ludoteca-prod-app:4000/health
 ```
 
-En el compose, `container_name: ludoteca-prod-app` (y `ludoteca-stg-app`) con la red `proxy` como externa. El proxy apunta a `ludoteca-prod-app:4000`.
+**Aviso:** en el proxy, el *Forward Hostname* tiene que ser `ludoteca-prod-app` (o la IP del host, `172.17.0.1`), nunca `127.0.0.1`. Dentro del contenedor del proxy, `127.0.0.1` es el propio proxy, y el síntoma es un 502 permanente aunque la aplicación esté levantada y sana.
 
 ### 1.3 Clave SSH de despliegue
 
