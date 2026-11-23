@@ -91,6 +91,30 @@ docker exec <contenedor-del-proxy> wget -qO- http://ludoteca-prod-app:4000/healt
 
 **Aviso:** en el proxy, el *Forward Hostname* tiene que ser `ludoteca-prod-app` (o la IP del host, `172.17.0.1`), nunca `127.0.0.1`. Dentro del contenedor del proxy, `127.0.0.1` es el propio proxy, y el síntoma es un 502 permanente aunque la aplicación esté levantada y sana.
 
+### 1.2 bis · Validar la cadena antes del primer despliegue
+
+Los contenedores de la aplicación los crea el compose del pipeline; no se crean a mano y no existen hasta que hay imagen en GHCR (`docker compose up -d` falla con `manifest unknown` antes). Para comprobar **hoy** que la red, el proxy y el TLS están bien, se levanta un contenedor de mentira con el nombre exacto que usará el compose:
+
+```sh
+docker run -d --rm --name ludoteca-stg-app --network proxy -p 127.0.0.1:4001:4001 \
+  node:24-alpine node -e 'require("node:http").createServer((_,res)=>{res.setHeader("content-type","application/json");res.end(JSON.stringify({status:"ok",version:"probe"}))}).listen(4001,"0.0.0.0")'
+```
+
+y lo mismo para producción con `ludoteca-prod-app`, `4000` y `127.0.0.1:4000:4000`. Después:
+
+```sh
+docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'
+docker exec manager nslookup ludoteca-stg-app
+docker exec manager wget -qO- http://ludoteca-stg-app:4001/health
+curl -sS https://ludoteca-stg.floyd303.com/health
+```
+
+Si la última devuelve el JSON del probe, el camino DNS → proxy → red → contenedor funciona y solo falta la aplicación. Si devuelve 502, el *Forward Hostname* del proxy no es el nombre correcto. Al terminar, se borra el de mentira, porque ocupa el nombre que necesita el real:
+
+```sh
+docker rm -f ludoteca-stg-app
+```
+
 ### 1.3 Clave SSH de despliegue
 
 Clave dedicada, sin passphrase, solo para GitHub Actions:
