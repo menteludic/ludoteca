@@ -15,7 +15,7 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-06 | Token de BGG | Registrar la aplicación y obtener el token de la API (sin él no hay miniaturas) | Roberto | P20 | Abierto |
 | PEN-07 | Aplicación de Facebook | Solicitud y aprobación, o dejar Facebook desactivado por evento | Roberto | P21 | Abierto |
 | PEN-08 | Paquete GHCR público | Cambiar la visibilidad del paquete a pública después del primer push (si no, el servidor necesita un token `read:packages`) | Roberto | P08 | Abierto |
-| PEN-09 | Protección de `main` | Checks obligatorios (`quality`, `contract`, `e2e`) y prohibición de push directo | Roberto | P04 | Abierto |
+| PEN-09 | Protección de `main` | Checks obligatorios y prohibición de push directo. Hoy solo existe `quality`; `contract` y `e2e` se añaden cuando existan (PEN-32). Después del primer despliegue verde | Roberto | P04 | Abierto |
 | PEN-10 | Licencia | Decidida AGPL-3.0; falta sustituir `LICENSE` y la mención del README (hoy MIT) | Roberto | Antes de publicar código | Abierto |
 | PEN-11 | Rotación de `DNI_KEY` | Escribir y probar el comando que descifra y vuelve a cifrar los DNI con una clave nueva (P14 lo menciona, no está implementado) | Desarrollo | Antes de producción | Abierto |
 | PEN-12 | Retención del DNI | RF-605 habla de «días de retención del DNI» y 13.1 dice «mientras exista la cuenta». Aclarar con la asociación y ajustar requisito o configuración | Roberto + junta | Antes de P14 | Abierto |
@@ -28,6 +28,8 @@ Regla de uso: un pendiente que bloquea una fase tiene que aparecer también en `
 | PEN-19 | Prueba de usabilidad | Cinco personas reales completando el alta sin ayuda (KPI-03) | Roberto | F4 | Abierto |
 | PEN-20 | Segundo administrador de aplicación | Nombrar una segunda cuenta con ese rol; hoy todo depende de una persona | Roberto | Antes de F6 | Abierto |
 | PEN-21 | Textos legales | Revisar la política de privacidad y el aviso de mayoría de edad con la junta antes de publicarlos | Roberto + junta | Antes de P39 | Abierto |
+| PEN-32 | `contract` y `e2e` en el pipeline | Los dos trabajos dependen de piezas que aún no existen (`openapi.yaml` en F1 y la interfaz en F2). Hasta entonces el workflow solo lleva `quality`, `image` y los dos despliegues | Desarrollo | F1 y F2 | Abierto |
+| PEN-33 | Rollback del wrapper | El camino de vuelta ante un healthcheck fallido nunca se ha ejecutado; la primera prueba real será forzando una etiqueta inexistente en staging | Desarrollo | Antes de producción | Abierto |
 
 ## Cerrados
 
