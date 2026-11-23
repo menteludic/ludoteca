@@ -174,7 +174,7 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 | Variable | prod | stg | Nota |
 |---|---|---|---|
 | `ENV_NAME` | `prod` | `stg` | Lo usa el compose para el nombre del proyecto y del contenedor |
-| `APP_PORT` | `4000` | `4001` | Publicado solo en `127.0.0.1` |
+| `APP_PORT` | `4000` | `4001` | Puerto del **host**; dentro del contenedor la app escucha siempre en 4000 |
 | `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano |
 | `BASE_URL` | `https://ludoteca.floyd303.com` | `https://ludoteca-stg.floyd303.com` | Enlaces de recuperación y cookies |
 | `TRUST_PROXY_HOPS` | `1` | `1` | Solo el proxy de Nginx; `2` si se activa el de Cloudflare |
@@ -188,6 +188,8 @@ Propiedad `ubuntu:ubuntu`, modo `0600`.
 | `LOG_LEVEL` | `info` | `debug` | — |
 
 Las claves `DNI_KEY` de staging y producción son **distintas**: nunca se copian datos reales a staging, y una clave filtrada en pruebas no abre los DNI de producción.
+
+Ojo con el puerto: `APP_PORT` es el puerto del host y cambia entre entornos (4000 / 4001), pero el contenedor siempre escucha en 4000 y el mapeo es `127.0.0.1:${APP_PORT}:4000`. Si la app escuchara en `APP_PORT` dentro del contenedor, staging quedaría inalcanzable y el síntoma sería un 502 solo en `ludoteca-stg`.
 
 ### 1.6 Proxy: dos proxy hosts
 
