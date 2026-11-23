@@ -110,10 +110,10 @@ Cada decisión se mantiene mientras no se revise por escrito. Una ADR sustituida
 
 ## ADR-016 · Terminación TLS en Nginx Proxy Manager
 
-- **Contexto.** El VPS ya publica todas sus aplicaciones con Nginx Proxy Manager: DNS en Cloudflare, proxy host en NPM, certificado gestionado por NPM y la aplicación escuchando en un puerto interno. Un Caddy propio en el compose añadiría un segundo terminador TLS y un segundo juego de certificados.
-- **Decisión.** La aplicación sirve HTTP en un puerto configurable (`APP_PORT`, 4000 por defecto), publicado solo en `127.0.0.1`. NPM enruta el dominio, emite el certificado y aplica HSTS; la app emite las cabeceras de seguridad de SEC-07 y lee la IP y el esquema reales con `TRUST_PROXY_HOPS=2`.
+- **Contexto.** El VPS ya publica todas sus aplicaciones con Nginx Proxy Manager: DNS en Cloudflare (solo DNS), proxy host en esa herramienta, certificado gestionado por ella y la aplicación escuchando en un puerto interno. Un Caddy propio en el compose añadiría un segundo terminador TLS y un segundo juego de certificados.
+- **Decisión.** La aplicación sirve HTTP en un puerto configurable (`APP_PORT`, 4000 en producción y 4001 en staging), publicado solo en `127.0.0.1` y unido a la red Docker `proxy`, donde el proxy la resuelve por nombre de servicio. El proxy enruta el dominio, emite el certificado y aplica HSTS; la app emite las cabeceras de seguridad de SEC-07 y lee la IP y el esquema reales con `TRUST_PROXY_HOPS=1` (Cloudflare en solo DNS).
 - **Alternativa.** Caddy en el compose (lo que decía 15.7): TLS automático, pero dos proxys delante del mismo host y dos formas de renovar certificados que mantener.
-- **Consecuencia.** Un contenedor menos y el TLS en la herramienta que el sysop ya usa. A cambio, la app depende de `X-Forwarded-For`/`X-Forwarded-Proto` para el límite por IP y para los enlaces absolutos; mal configurado, SEC-06 cuenta a todos los clientes como uno. El límite de subida y los timeouts largos pasan a NPM.
+- **Consecuencia.** Un contenedor menos y el TLS en la herramienta que el sysop ya usa. A cambio, la app depende de `X-Forwarded-For`/`X-Forwarded-Proto` para el límite por IP y para los enlaces absolutos; mal configurado, SEC-06 cuenta a todos los clientes como uno. El límite de subida y los timeouts largos pasan al proxy. Si algún día se activa la nube naranja de Cloudflare, `TRUST_PROXY_HOPS` sube a 2.
 
 ## ADR-017 · Entrega continua con Actions, GHCR y etiqueta por SHA
 

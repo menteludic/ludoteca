@@ -21,7 +21,7 @@ Una regla que ordena todo lo demás: **un juego por jugador a la vez**, sin rese
 
 | Pieza | Elección |
 |---|---|
-| Runtime | Node.js 26 |
+| Runtime | Node.js 24 LTS |
 | HTTP | Hono 4 con contrato OpenAPI |
 | Datos | SQLite en WAL con `node:sqlite`, en un volumen fuera del contenedor |
 | Interfaz | snabbdom + Fomantic-UI, sin paso de compilación |
@@ -51,7 +51,7 @@ Empieza por `docs/README.md`. Si buscas el documento completo de una vez, está 
 
 ## Puesta en marcha
 
-Lo que hay que preparar en el VPS (usuario de despliegue, clave SSH restringida, NPM, Cloudflare, copias) está en `docs/puesta-en-marcha-servidor.md`. Necesita el volumen de datos (`/srv/ludoteca/data`) fuera del contenedor y una copia de seguridad probada antes del evento.
+Lo que hay que preparar en el VPS (usuario de despliegue, clave SSH restringida, proxy de Nginx, Cloudflare, copias) está en `docs/puesta-en-marcha-servidor.md`. Necesita el volumen de datos (`/home/ubuntu/docker/ludoteca/prod/data`) fuera del contenedor y una copia de seguridad probada antes del evento.
 
 ## Convenciones
 

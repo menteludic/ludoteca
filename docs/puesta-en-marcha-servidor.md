@@ -1,6 +1,8 @@
 # Puesta en marcha en el servidor
 
-Documento de trabajo para el sysop. Recoge lo que hay que preparar **una sola vez** en el VPS y lo que ocurre en cada despliegue. La aplicación no termina TLS ni habla con Cloudflare: escucha en un puerto interno y Nginx Proxy Manager (NPM) hace de puerta.
+Documento de trabajo para el sysop. Recoge lo que hay que preparar **una sola vez** en el VPS y lo que ocurre en cada despliegue. La aplicación no termina TLS ni habla con Cloudflare: escucha en un puerto interno y el proxy de Nginx hace de puerta.
+
+> Terminología: en este proyecto **«el proxy»** es Nginx Proxy Manager. `npm` (en minúsculas y en código) es el gestor de paquetes de Node y no tiene nada que ver.
 
 ## 0. Topología
 
@@ -8,96 +10,133 @@ Documento de trabajo para el sysop. Recoge lo que hay que preparar **una sola ve
 Navegador
    │  https://ludoteca.floyd303.com
    ▼
-Cloudflare (DNS; proxy opcional)
+Cloudflare (solo DNS, nube gris)
    │  :443
    ▼
-NPM en el VPS  ── certificado Let's Encrypt, HSTS, límite de subida
-   │  http://127.0.0.1:4000
+Nginx Proxy Manager  ── certificado Let's Encrypt, HSTS, límite de subida
+   │  http://ludoteca-prod-app:4000   (red Docker «proxy»)
    ▼
-Contenedor app (Node, UID 10001)  ── /srv/ludoteca/data:/data
+Contenedor app (Node 24 LTS, UID 10001)  ── /home/ubuntu/docker/ludoteca/prod/data:/data
+```
+
+Dos entornos en el mismo VPS, separados por carpeta, puerto y volumen:
+
+```
+/home/ubuntu/docker/ludoteca/
+├── prod/   .env  compose.yaml  data/{ludoteca.db,images,backups}   APP_PORT=4000
+└── stg/    .env  compose.yaml  data/{ludoteca.db,images,backups}   APP_PORT=4001
 ```
 
 Consecuencias que afectan al código:
 
-- La app escucha en `0.0.0.0:4000` **dentro** del contenedor y se publica solo en `127.0.0.1:${APP_PORT}` del host. Nada de TLS, nada de certificados, nada de Caddy.
-- Detrás hay dos proxys (Cloudflare y NPM). La IP real del cliente y el esquema se leen de `X-Forwarded-For` / `X-Forwarded-Proto` con `TRUST_PROXY_HOPS=2`. Sin eso, el límite de intentos por IP (SEC-06) cuenta a todo el mundo como una sola IP.
-- El límite de subida del CSV de catálogo se configura en NPM (`client_max_body_size`), no en la app.
-- La app sirve `/health` para el despliegue y para la monitorización externa.
+- La app escucha HTTP en `4000` dentro del contenedor. En el host se publica **solo en `127.0.0.1`**: el proxy la alcanza por la red Docker y el script de despliegue hace el healthcheck sin abrir nada a internet.
+- Cloudflare queda en **solo DNS**, como las demás aplicaciones del servidor. Hay un único proxy delante: `TRUST_PROXY_HOPS=1`. Si algún día se activa el proxy de Cloudflare, pasa a `2`.
+- Las cabeceras de seguridad (CSP, HSTS, `nosniff`, `Referrer-Policy`) las emite la app. El proxy no las repite: dos CSP se suman y rompen la interfaz.
+- El límite de subida y los timeouts largos se configuran en el proxy, no en la app.
+- `/health` es la comprobación del despliegue y la de la monitorización externa, e incluye el SHA desplegado.
 
 ## 1. Una sola vez: el host
 
-### 1.1 Usuario de despliegue y directorios
+### 1.1 Directorios y permisos
+
+Se usa el usuario `ubuntu` que ya existe (está en el grupo `docker`), sin crear uno nuevo. Los datos pertenecen al UID del usuario de la imagen (`10001`):
 
 ```sh
-sudo useradd -m -s /bin/bash deploy
-sudo usermod -aG docker deploy          # docker ≈ root: ver aviso al final
-sudo install -d -m 755 -o root -g root /srv/ludoteca
-sudo install -d -m 750 -o 10001 -g 10001 /srv/ludoteca/data
-sudo install -d -m 750 -o 10001 -g 10001 /srv/ludoteca/data/images
-sudo install -d -m 750 -o 10001 -g 10001 /srv/ludoteca/data/backups
+mkdir -p /home/ubuntu/docker/ludoteca/{prod,stg}/data/{images,backups}
+sudo chown -R 10001:10001 /home/ubuntu/docker/ludoteca/prod/data
+sudo chown -R 10001:10001 /home/ubuntu/docker/ludoteca/stg/data
+sudo chmod 750 /home/ubuntu/docker/ludoteca/prod/data /home/ubuntu/docker/ludoteca/stg/data
 ```
 
-`10001` es el UID del usuario `app` dentro de la imagen. Si el directorio pertenece a otro UID, SQLite no puede escribir y el síntoma es un `readonly database` que parece un fallo de la aplicación.
+El contenedor entra por `/home/ubuntu`, así que ese directorio tiene que ser atravesable: `stat -c %a /home/ubuntu` debe dar `755` (valor por defecto en Ubuntu; si alguien lo puso a `750`, el contenedor no llega a sus datos y SQLite responde `readonly database`). Comprobación directa:
 
-### 1.2 Clave SSH de despliegue
+```sh
+sudo -u '#10001' sh -c 'touch /home/ubuntu/docker/ludoteca/prod/data/.probe && rm /home/ubuntu/docker/ludoteca/prod/data/.probe' && echo "UID 10001 escribe"
+```
 
-Se genera una clave dedicada, sin passphrase, solo para GitHub Actions:
+### 1.2 Red compartida con el proxy
+
+El proxy resuelve el contenedor por su nombre de servicio, así que los dos tienen que estar en la misma red Docker:
+
+```sh
+docker network create proxy 2>/dev/null || true
+docker inspect nginx-proxy-manager -f '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+```
+
+Si `proxy` no aparece en la segunda orden, conecta el contenedor del proxy:
+
+```sh
+docker network connect proxy nginx-proxy-manager
+```
+
+En el compose, `container_name: ludoteca-prod-app` (y `ludoteca-stg-app`) con la red `proxy` como externa. El proxy apunta a `ludoteca-prod-app:4000`.
+
+### 1.3 Clave SSH de despliegue
+
+Clave dedicada, sin passphrase, solo para GitHub Actions:
 
 ```sh
 ssh-keygen -t ed25519 -C "github-actions@ludoteca" -N "" -f ./ludoteca_deploy
 ```
 
-La privada (`ludoteca_deploy`) va a GitHub Secrets como `SSH_KEY`. La pública, en `/home/deploy/.ssh/authorized_keys`, **con el wrapper delante**:
+La privada va a GitHub Secrets como `SSH_KEY`. La pública, en `/home/ubuntu/.ssh/authorized_keys`, **con el wrapper delante**:
 
 ```
 command="/usr/local/bin/ludoteca-deploy",no-pty,no-agent-forwarding,no-X11-forwarding,no-port-forwarding ssh-ed25519 AAAA... github-actions@ludoteca
 ```
 
-Con `command=` la clave no abre una shell: solo puede invocar ese script, y el script solo acepta `deploy <tag>`, `rollback` y `status`. Una clave filtrada no permite ejecutar nada más.
+Con `command=`, la clave no abre shell: solo invoca el wrapper, y el wrapper solo acepta `deploy <entorno> <tag>`, `rollback <entorno>` y `status <entorno>`.
 
-### 1.3 El wrapper de despliegue
+### 1.4 El wrapper de despliegue
 
-`/usr/local/bin/ludoteca-deploy`, propiedad de `root:root`, modo `0755`. No se toca en cada despliegue: es infraestructura, no código.
+`/usr/local/bin/ludoteca-deploy`, propiedad de `root:root`, modo `0755`. Es infraestructura, no código: no se toca en cada despliegue.
 
 ```sh
 #!/bin/sh
-# Deploy gate for the ludoteca app. Accepts: deploy <tag> | rollback | status
+# Deploy gate for ludoteca. Accepts: deploy <prod|stg> <tag> | rollback <env> | status <env>
 set -eu
 
-BASE=/srv/ludoteca
+ROOT=/home/ubuntu/docker/ludoteca
+
+case "${SSH_ORIGINAL_COMMAND:-}" in
+  "deploy "*)   set -- ${SSH_ORIGINAL_COMMAND#deploy };   ENV=$1; TAG=${2:-} ;;
+  "rollback "*) set -- ${SSH_ORIGINAL_COMMAND#rollback }; ENV=$1; TAG="" ;;
+  "status "*)   set -- ${SSH_ORIGINAL_COMMAND#status };   ENV=$1; TAG="" ;;
+  *) echo "denied" >&2; exit 1 ;;
+esac
+
+case "$ENV" in prod|stg) ;; *) echo "unknown environment" >&2; exit 2 ;; esac
+
+BASE="$ROOT/$ENV"
+[ -f "$BASE/.env" ] || { echo "missing $BASE/.env" >&2; exit 2; }
+
 APP_PORT=$(grep -E '^APP_PORT=' "$BASE/.env" | cut -d= -f2)
 COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
 HEALTH="http://127.0.0.1:${APP_PORT:-4000}/health"
 
 case "${SSH_ORIGINAL_COMMAND:-}" in
-  "deploy "*)
-    TAG=${SSH_ORIGINAL_COMMAND#deploy }
-    printf '%s' "$TAG" | grep -Eq '^[0-9a-f]{7,40}$' || { echo "invalid tag" >&2; exit 2; }
-    ;;
-  "rollback")
-    TAG=$(cat "$BASE/.last-good")
-    ;;
-  "status")
+  status*)
     $COMPOSE ps
     curl -fsS "$HEALTH"
     exit 0
     ;;
+  rollback*)
+    TAG=$(cat "$BASE/.last-good")
+    ;;
   *)
-    echo "denied" >&2
-    exit 1
+    printf '%s' "$TAG" | grep -Eq '^[0-9a-f]{7,40}$' || { echo "invalid tag" >&2; exit 2; }
     ;;
 esac
 
-exec 9>/var/lock/ludoteca-deploy.lock
-flock -n 9 || { echo "another deploy is running" >&2; exit 3; }
+exec 9>"$BASE/.deploy.lock"
+flock -n 9 || { echo "another deploy is running in $ENV" >&2; exit 3; }
 
 PREVIOUS=$(grep -E '^TAG=' "$BASE/.env" | cut -d= -f2)
 
-# 1. Backup before touching anything
-$COMPOSE run --rm -T app backup --to "/data/backups/pre-$TAG.db"
-ls -1t "$BASE"/data/backups/pre-*.db | tail -n +6 | xargs -r rm --
+# 1. Backup before touching anything (keep the last five)
+$COMPOSE run --rm -T app backup --to "/data/backups/pre-$TAG.db" --keep 5
 
-# 2. Pull and migrate, then start
+# 2. Move the tag, pull, migrate, start
 sed -i "s/^TAG=.*/TAG=$TAG/" "$BASE/.env"
 $COMPOSE pull app
 $COMPOSE run --rm -T app migrate
@@ -112,7 +151,7 @@ while [ $i -lt 30 ]; do
 done
 
 if [ "$ok" -ne 1 ]; then
-  echo "healthcheck failed, rolling back to $PREVIOUS" >&2
+  echo "healthcheck failed in $ENV, rolling back to $PREVIOUS" >&2
   sed -i "s/^TAG=.*/TAG=$PREVIOUS/" "$BASE/.env"
   $COMPOSE pull app
   $COMPOSE up -d --remove-orphans
@@ -120,83 +159,81 @@ if [ "$ok" -ne 1 ]; then
 fi
 
 echo "$PREVIOUS" > "$BASE/.last-good"
-echo "deployed $TAG (previous $PREVIOUS)"
+echo "deployed $ENV $TAG (previous $PREVIOUS)"
 ```
 
-Dos decisiones dentro del script que conviene entender: la migración corre **antes** de arrancar y como paso aparte (nunca en el `entrypoint`), y el healthcheck no comprueba «responde 200» sino «responde 200 y dice que corre el tag que acabo de desplegar». Un 200 de la versión anterior es un despliegue fallido disfrazado.
+Tres decisiones que conviene entender: la migración corre **antes** de arrancar y como paso aparte (nunca en el `entrypoint`); el healthcheck exige que `/health` declare el tag desplegado, no un simple 200; y el `flock` impide que dos despliegues pisen el mismo entorno.
 
-El `compose.yaml` del servidor se instala a mano la primera vez y solo se vuelve a tocar cuando cambia el fichero del repositorio (raro: un despliegue normal solo mueve la etiqueta). Lo dejo fuera del flujo automático a propósito: si el pipeline pudiera reescribir el compose, quien controle el pipeline controla el host.
+El `compose.yaml` de cada entorno se instala a mano la primera vez y solo se toca cuando cambia el fichero del repositorio. Un despliegue normal solo mueve la etiqueta.
 
-### 1.4 `/srv/ludoteca/.env`
+### 1.5 `.env` de cada entorno
 
-Propiedad `deploy:deploy`, modo `0600` (lo edita el wrapper, contiene secretos).
+Propiedad `ubuntu:ubuntu`, modo `0600`.
 
-| Variable | Ejemplo | Nota |
+| Variable | prod | stg | Nota |
+|---|---|---|---|
+| `APP_PORT` | `4000` | `4001` | Publicado solo en `127.0.0.1` |
+| `TAG` | `sha-abc1234` | igual | Lo mueve el wrapper; no editar a mano |
+| `BASE_URL` | `https://ludoteca.floyd303.com` | `https://ludoteca-stg.floyd303.com` | Enlaces de recuperación y cookies |
+| `TRUST_PROXY_HOPS` | `1` | `1` | Solo el proxy de Nginx; `2` si se activa el de Cloudflare |
+| `NODE_ENV` | `production` | `production` | — |
+| `DATABASE_PATH` | `/data/ludoteca.db` | igual | Dentro del volumen |
+| `IMAGES_DIR` | `/data/images` | igual | Miniaturas |
+| `DNI_KEY` | `openssl rand -base64 32` | **otra distinta** | AES-256-GCM. Si se pierde, los DNI no se recuperan |
+| `SMTP_URL` | `smtps://…` | vacío | Sin correo en staging: el enlace se escribe en el log |
+| `SMTP_FROM` | `ludoteca@mail.floyd303.com` | igual | Subdominio con SPF/DKIM/DMARC |
+| `BGG_TOKEN` | *(vacío hasta que haya token)* | igual | Descarga de miniaturas |
+| `LOG_LEVEL` | `info` | `debug` | — |
+
+Las claves `DNI_KEY` de staging y producción son **distintas**: nunca se copian datos reales a staging, y una clave filtrada en pruebas no abre los DNI de producción.
+
+### 1.6 Proxy: dos proxy hosts
+
+| Campo | Producción | Staging |
 |---|---|---|
-| `APP_PORT` | `4000` | Puerto publicado en `127.0.0.1`. NPM apunta aquí |
-| `TAG` | `sha-abc1234` | Lo mueve el wrapper; no editar a mano |
-| `BASE_URL` | `https://ludoteca.floyd303.com` | Enlaces de recuperación y cookies |
-| `TRUST_PROXY_HOPS` | `2` | Cloudflare + NPM |
-| `DATABASE_PATH` | `/data/ludoteca.db` | Dentro del volumen |
-| `IMAGES_DIR` | `/data/images` | Miniaturas |
-| `DNI_KEY` | `openssl rand -base64 32` | AES-256-GCM. **Si se pierde, los DNI no se recuperan** |
-| `SMTP_URL` | `smtps://user:pass@smtp.proveedor.com:465` | Solo recuperación de contraseña |
-| `SMTP_FROM` | `ludoteca@mail.floyd303.com` | Subdominio propio con SPF/DKIM/DMARC |
-| `BGG_TOKEN` | *(vacío hasta que haya token)* | Descarga de miniaturas |
-| `LOG_LEVEL` | `info` | — |
+| Domain Names | `ludoteca.floyd303.com` | `ludoteca-stg.floyd303.com` |
+| Scheme | `http` | `http` |
+| Forward Hostname | `ludoteca-prod-app` | `ludoteca-stg-app` |
+| Forward Port | `4000` | `4001` |
+| Block Common Exploits | ON | ON |
+| Websockets | OFF | OFF |
+| Access List | ninguna | **una con usuario y contraseña** |
 
-`DNI_KEY` no se rota sin un plan: rotarla exige descifrar y volver a cifrar cada DNI con un comando de mantenimiento (pendiente de escribir en P14; queda anotado).
+Pestaña SSL en ambos: *Request a new SSL certificate*, **Force SSL**, HTTP/2, HSTS activado, HSTS Subdomains **desactivado**.
 
-### 1.5 NPM: Proxy Host
-
-| Campo | Valor |
-|---|---|
-| Domain Names | `ludoteca.floyd303.com` |
-| Scheme | `http` |
-| Forward Hostname | `host.docker.internal` (o la IP de `docker0`, p. ej. `172.17.0.1`) |
-| Forward Port | `4000` |
-| Block Common Exploits | ON |
-| Websockets Support | OFF (no se usan) |
-| Access List | ninguna: la app es pública, incluido `/panel` (RN-32) |
-
-Pestaña SSL: *Request a new SSL certificate*, **Force SSL**, HTTP/2, HSTS activado, HSTS Subdomains **desactivado**.
-
-Pestaña Advanced (bloque nginx):
+Pestaña Advanced (los dos):
 
 ```nginx
 client_max_body_size 25m;      # CSV del catálogo
 proxy_read_timeout 120s;       # descarga de imágenes y exportaciones
 proxy_send_timeout 120s;
-# La CSP, HSTS, Referrer-Policy y nosniff los emite la aplicación (SEC-07).
-# No duplicar cabeceras aquí: dos CSP se suman y rompen la interfaz.
+# Las cabeceras de seguridad las emite la aplicación (SEC-07).
+# No duplicarlas aquí: dos CSP se suman y rompen la interfaz.
 ```
 
-Si NPM es un contenedor y `host.docker.internal` no resuelve, añade a su compose:
+La contraseña básica de staging se pone para el primer despliegue y se puede retirar después; sirve para que nadie indexe ni pruebe una versión a medias.
 
-```yaml
-extra_hosts:
-  - "host.docker.internal:host-gateway"
-```
+### 1.7 Cloudflare
 
-### 1.6 Cloudflare
+Solo DNS en los dos nombres:
 
-Orden correcto, y este orden importa:
+| Tipo | Nombre | Contenido | Proxy |
+|---|---|---|---|
+| A | `ludoteca` | IP del VPS | DNS only (nube gris) |
+| A | `ludoteca-stg` | IP del VPS | DNS only (nube gris) |
 
-1. Registro `A` `ludoteca` → IP del VPS, **proxy desactivado** (nube gris).
-2. En NPM, emitir el certificado. Con la nube gris, el reto HTTP-01 llega.
-3. Activar el proxy (nube naranja) y poner SSL/TLS en **Full (strict)**.
-4. Reglas: *Always Use HTTPS* ON; **Auto Minify OFF**; **Rocket Loader OFF**. Los dos últimos rompen aplicaciones hechas con nodos virtuales.
-5. Comprobar que Cloudflare no cachea HTML ni API. La app ya manda `Cache-Control: no-store` en HTML y JSON, y un año `immutable` en `/images/*`; si Cloudflare ignora esas cabeceras para HTML, se crea una regla de caché para `ludoteca.floyd303.com/*` excluyendo `/images/*`.
+Con la nube gris, el reto HTTP-01 de Let's Encrypt llega directo y no hay caché ni límites de Cloudflare de por medio. Se pierde la absorción de tráfico de Cloudflare; para este proyecto (asociación sin ánimo de lucro, un fin de semana) es un intercambio razonable. Si algún día se activa la nube naranja: SSL/TLS **Full (strict)**, *Always Use HTTPS*, **Auto Minify OFF**, **Rocket Loader OFF** y `TRUST_PROXY_HOPS=2`.
 
-### 1.7 Firewall y logs
+### 1.8 Firewall y logs
 
 ```sh
 sudo ufw allow 80,443/tcp
 sudo ufw deny 4000/tcp
+sudo ufw deny 4001/tcp
 sudo ufw status
 ```
 
-El puerto 4000 no debe ser alcanzable desde fuera: se publica en `127.0.0.1` y además se cierra en el cortafuegos. En el compose, límite de logs:
+El puerto interno ya se publica en `127.0.0.1`; cerrarlo también en el cortafuegos es la segunda barrera. En el compose, límite de logs:
 
 ```yaml
 logging:
@@ -204,77 +241,78 @@ logging:
   options: { max-size: "10m", max-file: "5" }
 ```
 
-### 1.8 Copia de seguridad diaria
+### 1.9 Copia de seguridad
 
-Cron del host, 04:00, fuera del contenedor:
+Cron del host a las 04:00, para cada entorno:
 
 ```sh
-cd /srv/ludoteca && docker compose run --rm -T app backup --to /data/backups/nightly-$(date +%F).db
-find /srv/ludoteca/data/backups -name 'nightly-*.db' -mtime +30 -delete
+cd /home/ubuntu/docker/ludoteca/prod && docker compose run --rm -T app backup --to /data/backups/nightly-$(date +%F).db --keep 30
 ```
 
-Y una copia **fuera del VPS** (rclone, restic o `age` + descarga) al menos semanal. La copia que vive en el mismo disco que el original no es una copia.
+La retención la hace el propio comando (`--keep`), porque los ficheros son del UID 10001 y `ubuntu` no puede borrarlos desde el host.
 
-### 1.9 GitHub
+**Pendiente:** la copia cifrada fuera del VPS queda anotada en `docs/pendientes.md` (PEN-01) hasta que se decida el destino. Mientras tanto, una copia en el mismo disco no es una copia.
+
+### 1.10 GitHub
 
 | Elemento | Valor |
 |---|---|
 | Repositorio | `git@github.com:menteludic/ludoteca.git` (público, MIT) |
 | Paquete GHCR | `ghcr.io/menteludic/ludoteca` — **visibilidad pública** (Settings → Packages → Change visibility) |
-| Secrets del entorno `production` | `SSH_HOST`, `SSH_USER=deploy`, `SSH_KEY`, `SSH_KNOWN_HOSTS` |
+| Secrets | `SSH_HOST`, `SSH_USER=ubuntu`, `SSH_KEY`, `SSH_KNOWN_HOSTS` |
 | Variable | `APP_URL=https://ludoteca.floyd303.com` |
 | Branch protection en `main` | Checks obligatorios: `quality`, `contract`, `e2e`; sin push directo |
 
-Si el paquete de GHCR queda privado, el VPS necesita `docker login ghcr.io` con un token de solo lectura (`read:packages`) guardado en `/home/deploy/.docker/config.json` con modo `0600`. Preferible público: menos credenciales en el servidor.
+Si el paquete queda privado, el servidor necesita `docker login ghcr.io` con un token `readonly` (`read:packages`) en `/home/ubuntu/.docker/config.json` con modo `0600`. Preferible público: menos credenciales en el servidor.
 
-### 1.10 Primera cuenta y prueba de humo
+### 1.11 Primera cuenta y prueba de humo (en staging)
 
 ```sh
-cd /srv/ludoteca
-docker compose run --rm -T app create-admin --email roberto@ejemplo.com   # pide la contraseña por stdin
-docker compose run --rm -T app mail-test --to roberto@ejemplo.com
-curl -fsS http://127.0.0.1:4000/health
+cd /home/ubuntu/docker/ludoteca/stg
+docker compose run --rm -T app create-admin --email roberto@ejemplo.com   # contraseña por stdin
+curl -fsS http://127.0.0.1:4001/health
 ```
 
-Después, desde el navegador: entrar, crear el evento con sus franjas, importar el CSV de BGG, descargar imágenes, registrar un jugador de prueba y completar el ciclo con cinco juegos (lista E.1).
+Después, desde el navegador: entrar, crear el evento con sus franjas, importar el CSV de BGG, descargar imágenes, registrar un jugador de prueba y cerrar el ciclo con cinco juegos (lista E.1). Producción se toca después, con los mismos comandos y las mismas comprobaciones.
 
 ## 2. Cada despliegue
 
 ```
 push a una rama  →  PR  →  quality + contract + e2e  →  merge a main
                                                           │
-                        build imagen sha-abc1234 → GHCR ──┘
-                                                          │
-                        ssh deploy@vps "deploy sha-abc1234"
-                                                          │
-      backup → pull → migrate → up -d → /health dice abc1234 → .last-good
-                                                          │
-                                    rojo → rollback automático a .last-good
+                imagen sha-abc1234 → GHCR ────────────────┘
+                     │
+                     ├─ ssh ubuntu@vps "deploy stg sha-abc1234"   → humo sobre staging
+                     └─ ssh ubuntu@vps "deploy prod sha-abc1234"  → .last-good
+                              backup → pull → migrate → up -d → /health dice abc1234
+                                                         rojo → rollback automático
 ```
 
-Lo que puede hacer el operador sin pipeline: `ssh deploy@vps "status"` (estado y versión) y `ssh deploy@vps "rollback"` (vuelve a `.last-good`).
+Sin pipeline, el operador tiene dos verbos: `ssh ubuntu@vps "status prod"` y `ssh ubuntu@vps "rollback prod"`.
 
 ## 3. Ensayo en local antes de producción
 
-El mismo camino se puede recorrer en la máquina de desarrollo, y así se hace antes de cada fase:
-
 ```sh
-make build                      # imagen con el mismo Dockerfile
+make build                      # misma imagen, mismo Dockerfile
 make up                         # compose local con APP_PORT=4000 y volumen ./data
 make smoke                      # health + versión + ciclo mínimo por HTTP
 ./deploy/deploy.sh --dry-run    # valida script, permisos de volumen, migrate y healthcheck
 ```
 
-La imagen que se prueba en local es la que se publica: mismo Dockerfile, misma etiqueta por SHA, mismo healthcheck. Lo que **no** se puede ensayar en local es la cadena Cloudflare → NPM → app, el certificado, el DNS y el correo. Por eso el primer despliegue va a `staging.floyd303.com` (mismo compose, `APP_PORT=4001`, volumen `data-staging`, datos de prueba) y producción solo se toca cuando ese despliegue pasa la lista.
+La imagen que se prueba en local es la que se publica: mismo Dockerfile, misma etiqueta por SHA, mismo healthcheck. Lo que **no** se ensaya en local es la cadena proxy → app, el certificado, el DNS y el correo; para eso está el entorno `stg` en el mismo VPS.
 
 ## 4. Aviso que hay que tener escrito
 
-El usuario `deploy` está en el grupo `docker`, y pertenecer al grupo `docker` equivale a ser root en el host: cualquiera con esa cuenta puede montar `/` dentro de un contenedor. La protección real no es el grupo, es que la clave SSH solo puede invocar el wrapper con tres verbos. Aun así: esa clave no se copia a portátiles, rota si hay duda, y el acceso interactivo por SSH del día a día se hace con tu cuenta, no con `deploy`.
+`ubuntu` está en el grupo `docker`, y pertenecer a ese grupo equivale a ser root en el host: cualquiera con esa cuenta puede montar `/` dentro de un contenedor. La protección real no es la cuenta, es que la clave de Actions solo puede invocar el wrapper con sus tres verbos. Esa clave no se copia a portátiles y se rota si hay duda.
 
-## 5. Pendiente de confirmar contigo
+## 5. Decisiones cerradas
 
-1. ¿NPM puede resolver `host.docker.internal` o hay que usar la IP de `docker0`?
-2. ¿Cloudflare queda en modo proxy (naranja) o solo DNS? Cambia `TRUST_PROXY_HOPS` y la regla de caché.
-3. ¿`ludoteca.floyd303.com` es el nombre definitivo? Va en `BASE_URL`, en los enlaces de recuperación y en los certificados.
-4. ¿Quieres `staging.floyd303.com` con contraseña básica en NPM para el primer despliegue?
-5. ¿El VPS tiene `age` o `restic` para las copias cifradas fuera del host, o lo dejamos en `rclone` a un destino que ya uses?
+| Tema | Decisión |
+|---|---|
+| Runtime | Node **24 LTS** (verificado: `node:sqlite` funciona sin flag en 24.22.3) |
+| Rutas | `/home/ubuntu/docker/ludoteca/{prod,stg}` |
+| Usuario de despliegue | `ubuntu`, clave ed25519 dedicada con `command=` |
+| Cloudflare | Solo DNS (nube gris); `TRUST_PROXY_HOPS=1` |
+| Dominios | `ludoteca.floyd303.com` y `ludoteca-stg.floyd303.com` |
+| Staging | Mismo VPS, puerto 4001, volumen y clave de cifrado propios, contraseña básica |
+| Copia fuera del VPS | Pendiente (PEN-01) |

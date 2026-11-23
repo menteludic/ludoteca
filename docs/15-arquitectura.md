@@ -109,8 +109,8 @@ Regla de dependencia: `domain` no importa nada; `app` importa `domain`; `infra` 
 | Pieza | Decisión |
 |---|---|
 | Contenedores | Solo `app`, con el UID 10001. El TLS lo termina el Nginx Proxy Manager del host, no un Caddy propio. |
-| Servidor | VPS de 1 vCPU y 2 GB, 6–10 €/mes, con Portainer como panel de operación |
-| Exposición | La app escucha HTTP en `0.0.0.0:4000` dentro del contenedor y se publica en `127.0.0.1:${APP_PORT}` del host. NPM enruta el dominio y emite el certificado. |
+| Servidor | VPS de 1 vCPU y 2 GB, 6–10 €/mes, con Portainer como panel de operación. Dos entornos en `/home/ubuntu/docker/ludoteca/{prod,stg}` |
+| Exposición | La app escucha HTTP en `0.0.0.0:4000` dentro del contenedor y se publica en `127.0.0.1:${APP_PORT}` del host, unida a la red Docker `proxy`. El proxy de Nginx la resuelve por nombre de servicio, enruta el dominio y emite el certificado. |
 | Configuración | Variables de entorno en `/srv/ludoteca/.env`, fuera del repositorio |
 | Datos | **Volumen Docker fuera del contenedor**: `/srv/ludoteca/data` montado en `/data`. Dentro viven `ludoteca.db`, `ludoteca.db-wal` y `images/`. Recrear o actualizar el contenedor no toca el dato. |
 | Copias | `VACUUM INTO` diario sobre `/data`, más copia semanal cifrada fuera del host |
