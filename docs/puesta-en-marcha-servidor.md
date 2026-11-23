@@ -120,7 +120,13 @@ Si el último devuelve 502 con el contenedor arriba y conectado, el fallo está 
 docker exec manager sh -c 'cat /data/nginx/proxy_host/*.conf' | grep -E 'server_name|proxy_pass'
 ```
 
-Tiene que aparecer `proxy_pass http://ludoteca-stg-app:4000;` para `ludoteca-stg.floyd303.com`. Si pone `127.0.0.1`, una IP o un puerto distinto, ahí está el problema.
+Tiene que aparecer, en el fichero de `ludoteca-stg.floyd303.com`, `set $server "ludoteca-stg-app";`, `set $port 4000;` y `proxy_pass $forward_scheme://$server:$port;`. El proxy de Nginx no escribe la URL fija: usa variables, así que buscar solo `proxy_pass` no basta. Si `$server` es `127.0.0.1`, una IP o un puerto distinto, ahí está el problema.
+
+Y si sigue sin estar claro, el registro de errores del proxy dice la causa exacta: `could not be resolved` es nombre mal escrito o red mal conectada; `connect() failed` es que resuelve pero nadie escucha en ese puerto.
+
+```sh
+docker exec manager sh -c 'tail -n 20 /data/logs/error.log'
+```
 
 Al terminar, se borran los de mentira, porque ocupan el nombre que necesitan los reales:
 
