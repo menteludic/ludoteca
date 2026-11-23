@@ -104,12 +104,24 @@ y lo mismo para producción con `ludoteca-prod-app`, `4000` y `127.0.0.1:4000:40
 
 ```sh
 docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}'
-docker exec manager nslookup ludoteca-stg-app
-docker exec manager wget -qO- http://ludoteca-stg-app:4001/health
+docker run --rm --network proxy node:24-alpine \
+  node -e 'fetch("http://ludoteca-stg-app:4001/health").then(r => r.text()).then(console.log)'
 curl -sS https://ludoteca-stg.floyd303.com/health
 ```
 
-Si la última devuelve el JSON del probe, el camino DNS → proxy → red → contenedor funciona y solo falta la aplicación. Si devuelve 502, el *Forward Hostname* del proxy no es el nombre correcto. Al terminar, se borra el de mentira, porque ocupa el nombre que necesita el real:
+La segunda orden prueba resolución y HTTP **desde dentro de la red** sin depender de las utilidades del contenedor del proxy: la imagen de Nginx Proxy Manager no trae `nslookup` ni `wget`, y `docker exec manager nslookup` falla con «executable file not found». Si la tercera devuelve el JSON del probe, el camino completo funciona y solo falta la aplicación.
+
+Si la tercera devuelve 502 con el contenedor arriba y conectado, el fallo está en el enrutado del proxy, no en la red. Se ve sin abrir la interfaz:
+
+```sh
+docker exec manager sh -c 'cat /data/nginx/proxy_host/*.conf' | grep -E 'server_name|proxy_pass'
+```
+
+Tiene que aparecer `proxy_pass http://ludoteca-stg-app:4001;` para `ludoteca-stg.floyd303.com`. Si pone `127.0.0.1` o una IP, ese es el problema.
+
+**El puerto del host puede estar ocupado.** `127.0.0.1:4000` es un puerto que otro servicio del VPS puede estar usando; el error es `address already in use` y el contenedor no arranca. Se comprueba con `ss -ltnp 'sport = :4000'`. Como el proxy habla con el contenedor por la red y no por el host, basta cambiar `APP_PORT` en el `.env` de ese entorno (por ejemplo `4010`) sin tocar el proxy.
+
+Al terminar, se borra el de mentira, porque ocupa el nombre que necesita el real:
 
 ```sh
 docker rm -f ludoteca-stg-app
