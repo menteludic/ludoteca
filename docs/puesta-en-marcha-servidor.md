@@ -421,3 +421,22 @@ git push -u origin main
 Si el segundo `git log` muestra commits (por ejemplo, la licencia añadida desde la web), integrarlos antes de empujar: `git pull --rebase origin main`, resolver si hay conflicto y repetir el `push`. Un `git push --force` aquí no es aceptable: borraría trabajo del repositorio.
 
 **Alternativa si el repositorio está solo en el servidor de desarrollo:** se genera un par de claves, la pública se añade en GitHub como *Deploy key* con permiso de escritura, y el `push` lo hace el propio entorno de desarrollo. La clave nunca se pega en un chat.
+
+## 7. Si el paquete de GHCR no puede ser público
+
+La organización puede limitar la creación de paquetes públicos (*Organization → Settings → Packages → Package Creation*). Si esa política no se puede cambiar, o el administrador de la empresa la impone por encima, el despliegue sigue funcionando con credenciales de solo lectura:
+
+1. Crear un token **personal access token (classic)** con un único permiso: `read:packages`. Los *fine-grained tokens* no sirven para GHCR.
+2. Guardarlo en el `.env` de cada entorno:
+
+   ```sh
+   GHCR_USER=<usuario de GitHub dueño del token>
+   GHCR_TOKEN=<el token>
+   ```
+
+3. Dar permisos al fichero: `chmod 600 /home/ubuntu/docker/ludoteca/{prod,stg}/.env`.
+4. Desplegar: el wrapper detecta `GHCR_TOKEN` y hace `docker login ghcr.io` antes de bajar la imagen, sin dejar el token en el historial ni en el log.
+
+El `.env` ya está fuera del repositorio; el token se queda en el servidor. Si algún día el paquete pasa a público, se pueden borrar las dos líneas y el despliegue vuelve al acceso anónimo.
+
+Aviso sobre la visibilidad: hacer un paquete público es **irreversible** en GitHub («once you make a package public, you cannot make it private again»).

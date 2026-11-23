@@ -23,17 +23,34 @@ BASE="$ROOT/$ENV"
 
 COMPOSE="docker compose -f $BASE/compose.yaml --env-file $BASE/.env"
 
+env_value() { grep -E "^$1=" "$BASE/.env" | head -1 | cut -d= -f2-; }
+
+GHCR_USER=${GHCR_USER:-$(env_value GHCR_USER)}
+GHCR_TOKEN=${GHCR_TOKEN:-$(env_value GHCR_TOKEN)}
+
 # Health is asked inside the container: no port is published on the host.
 health() { $COMPOSE exec -T app node src/cli.js health 2>/dev/null; }
+
+# A private package needs credentials. The token is a read:packages PAT that
+# lives only in the environment file of the server, never in the repository.
+ghcr_login() {
+  [ -n "${GHCR_TOKEN:-}" ] || return 0
+  if ! printf '%s' "$GHCR_TOKEN" |
+      docker login ghcr.io -u "${GHCR_USER:-github}" --password-stdin >/dev/null 2>&1; then
+    echo "no se pudo autenticar en ghcr.io con GHCR_USER/GHCR_TOKEN" >&2
+    return 1
+  fi
+}
 
 # The image is pulled first: it is the step that fails when the GHCR package is
 # private, and failing here leaves the environment untouched.
 pull_image() {
+  ghcr_login || return 1
   if ! docker pull "$IMAGE:$1" >/dev/null; then
     {
       echo "no se pudo descargar $IMAGE:$1"
-      echo "causa probable: el paquete GHCR es privado o el host no tiene credenciales"
-      echo "arreglo: pon el paquete en público, o docker login ghcr.io con un token read:packages"
+      echo "si el paquete es privado: guarda un token read:packages en $BASE/.env"
+      echo "  GHCR_USER=<usuario> y GHCR_TOKEN=<token>; el despliegue hará docker login solo"
     } >&2
     return 1
   fi
