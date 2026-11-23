@@ -263,11 +263,35 @@ La retención la hace el propio comando (`--keep`), porque los ficheros son del 
 |---|---|
 | Repositorio | `git@github.com:menteludic/ludoteca.git` (público, MIT) |
 | Paquete GHCR | `ghcr.io/menteludic/ludoteca` — **visibilidad pública** (Settings → Packages → Change visibility) |
-| Secrets | `SSH_HOST`, `SSH_USER=ubuntu`, `SSH_KEY`, `SSH_KNOWN_HOSTS` |
+| Secrets | `SSH_HOST=82.223.117.97`, `SSH_USER=ubuntu`, `SSH_KEY`, `SSH_KNOWN_HOSTS` |
+| Contenido de `SSH_KNOWN_HOSTS` | Una línea: `82.223.117.97 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICaBY7VGyYJ9KDJb8G6PGu+nHrF1AL6h5Y27Vb6BHJfm` |
 | Variable | `APP_URL=https://ludoteca.floyd303.com` |
 | Branch protection en `main` | Checks obligatorios: `quality`, `contract`, `e2e`; sin push directo |
 
 Si el paquete queda privado, el servidor necesita `docker login ghcr.io` con un token `readonly` (`read:packages`) en `/home/ubuntu/.docker/config.json` con modo `0600`. Preferible público: menos credenciales en el servidor.
+
+**Qué es `SSH_KNOWN_HOSTS`.** Es la clave pública del *servidor*, no la del usuario: la que el SSH del VPS presenta al conectarse. GitHub la compara con la que tiene guardada y, si no coincide, aborta la conexión. Sirve para que un pipeline no entregue la clave de despliegue a un impostor que se haga pasar por la IP del VPS.
+
+Cómo se comprueba antes de fiarse (en el VPS):
+
+```sh
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+# 256 SHA256:LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38 root@vps (ED25519)
+```
+
+Ese `SHA256:…` tiene que ser **exactamente** `LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38`, que es el que devuelve hoy `ssh-keyscan` desde fuera para 82.223.117.97. Si no coincide, no se pega nada en el secret: el que responde en esa IP no es el servidor que crees. Si el VPS se reinstala o se regeneran las claves de host, el secret se actualiza o los despliegues fallan con `Host key verification failed`.
+
+En el workflow se escribe antes de conectar:
+
+```yaml
+- name: known_hosts
+  run: |
+    mkdir -p ~/.ssh
+    printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+    chmod 600 ~/.ssh/known_hosts
+```
+
+y todo `ssh`/`scp` sale con `-o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts`.
 
 ### 1.11 Comprobación previa (preflight)
 
