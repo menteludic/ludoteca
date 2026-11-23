@@ -1,0 +1,41 @@
+# Compose de producción y staging. Se instala a mano en
+# /home/ubuntu/docker/ludoteca/{prod,stg}/compose.yaml y solo se toca
+# cuando cambia este fichero. Un despliegue normal solo mueve TAG en el .env.
+#
+# Requiere en el .env de cada entorno: ENV_NAME (prod o stg), TAG y APP_PORT.
+name: ludoteca-${ENV_NAME:?define ENV_NAME en .env}
+
+services:
+  app:
+    image: ghcr.io/menteludic/ludoteca:${TAG:?TAG no definido en el .env}
+    container_name: ludoteca-${ENV_NAME:?define ENV_NAME en .env}-app
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:${APP_PORT:-4000}:4000"
+    volumes:
+      - ./data:/data
+    networks:
+      - proxy
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "src/cli.js", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+networks:
+  proxy:
+    external: true
