@@ -102,7 +102,11 @@ src/
 test/
 ```
 
-Regla de dependencia: `domain` no importa nada; `app` importa `domain`; `infra` y `http` importan `app`; `bootstrap` importa todo. `class`, `new` y `this` están prohibidos en `domain` y `app`, y se comprueba con lint.
+Regla de dependencia: `domain` importa solo módulos relativos y `ramda`; `app` importa `domain`; `infra` y `http` importan `app`; `bootstrap` importa todo. `class`, `new` y `this` están prohibidos en `domain` y `app`, y se comprueba con lint.
+
+Ramda se admite también en `domain` porque son funciones puras sin I/O: no acopla el núcleo a ningún framework ni a la infraestructura (ADR-020).
+
+Cada módulo exporta **una fábrica** que devuelve un objeto con sus operaciones, no funciones sueltas. El objeto que recibe la fábrica es su configuración, el estado privado vive en el closure y la instancia se crea donde se compone. Es lo que permite sustituir `Database` por un doble en una prueba sin tocar el dominio.
 
 ## 15.7 Despliegue
 

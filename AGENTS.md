@@ -16,9 +16,9 @@ Nada se da por terminado sin `make check` en verde y su salida real pegada en el
 
 ## Idioma
 
-- Código, nombres de ficheros, tablas, rutas y commits en **inglés**.
-- Comentarios de código, documentación y textos de interfaz en **castellano**.
-- Textos de la interfaz en un único fichero `src/web/ui/es.json` con claves estables.
+- **Todo el código en inglés**: nombres, claves, comentarios, JSDoc, mensajes de error y de log. Nada de castellano dentro de `src/` ni de `test/`.
+- **La documentación en castellano**: `docs/`, `README.md`, este fichero.
+- Textos que ve la persona (títulos y detalles de error, etiquetas) en un único catálogo `src/web/ui/es.json`, con claves estables. El código los busca por clave; nunca escribe una frase en castellano.
 
 ## Arquitectura
 
@@ -34,12 +34,36 @@ test/
 deploy/        compose del servidor, preflight, scripts de despliegue
 ```
 
-Dependencias hacia dentro: `domain` no importa nada; `app` importa `domain`; `infra` y `http` importan `app`; `bootstrap` importa todo. La regla se comprueba con ESLint, no con buenas intenciones.
+Dependencias hacia dentro: `domain` importa solo módulos relativos y `ramda`; `app` importa `domain`; `infra` y `http` importan `app`; `bootstrap` importa todo. La regla se comprueba con ESLint, no con buenas intenciones.
+
+### Módulos
+
+Un módulo **no expone funciones sueltas**: expone una fábrica y el objeto con sus operaciones.
+
+```js
+const Result = () => {
+  const ok = (value) => ({ok: true, value});
+  return Object.freeze({ok});
+};
+
+export {Result};
+```
+
+- El objeto que recibe la fábrica es su configuración: `Database({path})`, `Problem({titles})`, `Migrations({database, clock})`.
+- La instancia se crea donde se compone (`src/bootstrap/`, `src/cli.js`) o en la prueba. Nunca una instancia suelta a mitad de un módulo.
+- El estado privado vive en el closure: quien usa `Database` no ve el driver, solo `exec`, `prepare`, `isHealthy`, `backup` y `close`.
+- Se puede exportar la fábrica y nada más. La excepción se justifica en el propio fichero.
+
+### Ramda
+
+`ramda` está disponible en todo `src/`, incluido `domain`: son funciones puras, sin I/O ni framework, así que no acoplan el núcleo. Se usa donde simplifica de verdad —`propEq`, `propOr`, `curry`, `pipe`, `groupBy`, `sortBy`— y no para reescribir `map` o `filter` sobre un array de tres elementos. Si una línea nativa se lee mejor, se queda la nativa.
 
 ## Prohibiciones
 
 - `class`, `new` y `this` en `src/domain` y `src/app` (regla de lint, no sugerencia).
-- Importar Hono, zod, SQLite o cualquier paquete en `src/domain`.
+- Exportar funciones sueltas desde un módulo de `src/`: se exporta la fábrica.
+- Importar en `src/domain` cualquier cosa que no sea un módulo relativo o `ramda`.
+- Escribir castellano en el código: comentarios, mensajes o nombres.
 - Leer la hora del sistema en el núcleo: el instante entra como parámetro.
 - Consultas construidas concatenando texto.
 - Secretos, DNIs reales ni datos de producción en el repositorio o en las pruebas.
@@ -48,7 +72,7 @@ Dependencias hacia dentro: `domain` no importa nada; `app` importa `domain`; `in
 
 ## Cobertura
 
-Umbral global 90 % (`src/domain` 95 %, `src/app` 90 %, `src/http` 85 %, `src/infra` 80 %, capítulo 16). Hoy solo existe `src/domain`; el resto de umbrales entran cuando exista su carpeta.
+Umbral global 90 % (`src/domain` 95 %, `src/app` 90 %, `src/http` 85 %, `src/infra` 80 %, capítulo 16). Cubiertas `domain`, `app`, `http` e `infra`; `bootstrap` y `src/cli.js` se excluyen del cómputo porque son composición con efectos, y se verifican arrancando de verdad.
 
 ## Pruebas
 
