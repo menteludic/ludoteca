@@ -4,41 +4,44 @@ import {mkdtempSync, existsSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 
-import {backupDatabase, isDatabaseHealthy, openDatabase} from '../../src/infra/sqlite/database.js';
-import {applyMigrations} from '../../src/infra/sqlite/migrations.js';
+import {Database} from '../../src/infra/sqlite/database.js';
+import {Migrations} from '../../src/infra/sqlite/migrations.js';
 
 const now = '2026-11-23T18:00:00.000Z';
 
 /**
- * Directorio temporal para el fichero de base de datos.
+ * Temporary directory for the database file.
  *
- * @returns {string} Ruta del directorio.
+ * @returns {string} Directory path.
  */
 const tempDir = () => mkdtempSync(join(tmpdir(), 'ludoteca-db-'));
 
-test('la base responde con los PRAGMA aplicados', () => {
-  const db = openDatabase(join(tempDir(), 'test.db'));
+test('the database answers with the pragmas applied', () => {
+  const database = Database({path: join(tempDir(), 'test.db')});
 
-  assert.equal(isDatabaseHealthy(db), true);
-  assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+  assert.equal(database.isHealthy(), true);
+  assert.equal(database.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+  database.close();
 });
 
-test('la copia deja un fichero con el esquema dentro', () => {
+test('the backup leaves a file with the schema inside', () => {
   const dir = tempDir();
-  const db = openDatabase(join(dir, 'ludoteca.db'));
-  applyMigrations(db, now);
+  const database = Database({path: join(dir, 'ludoteca.db')});
+  Migrations({database, clock: () => now}).apply();
   const target = join(dir, 'pre-abc1234.db');
 
-  backupDatabase(db, target);
+  database.backup(target);
 
   assert.equal(existsSync(target), true);
-  const copy = openDatabase(target);
+  const copy = Database({path: target});
   const tables = copy.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all();
-  assert.equal(tables.some((row) => row.name === 'loans'), true);
+  assert.equal(tables.some((/** @type {{name: string}} */ row) => row.name === 'loans'), true);
+  copy.close();
 });
 
-test('rechaza una ruta de copia vacía', () => {
-  const db = openDatabase(join(tempDir(), 'test.db'));
+test('it refuses an empty backup path', () => {
+  const database = Database({path: join(tempDir(), 'test.db')});
 
-  assert.throws(() => backupDatabase(db, '  '), /vacía/);
+  assert.throws(() => database.backup('  '), /empty/);
+  database.close();
 });

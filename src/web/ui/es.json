@@ -1,0 +1,19 @@
+{
+  "problems": {
+    "titles": {
+      "400": "Petición inválida",
+      "401": "No autenticado",
+      "403": "Sin permiso",
+      "404": "No encontrado",
+      "409": "Conflicto",
+      "413": "Demasiado grande",
+      "429": "Demasiadas peticiones",
+      "500": "Error interno",
+      "503": "Servicio no disponible"
+    },
+    "details": {
+      "NOT_FOUND": "Esa dirección no existe.",
+      "INTERNAL": "Algo ha fallado por nuestra parte."
+    }
+  }
+}

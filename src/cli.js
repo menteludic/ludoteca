@@ -1,36 +1,37 @@
 #!/usr/bin/env node
 /**
- * Comandos de mantenimiento que ejecuta el despliegue y el cron del host.
- * Es borde: lee el entorno, abre la base y escribe en la salida.
+ * Maintenance commands run by the deployment and by the host cron. This is the
+ * edge: it reads the environment, opens the database and prints the outcome.
  *
  *   node src/cli.js health
  *   node src/cli.js migrate
- *   node src/cli.js backup --to /data/backups/pre-sha.db [--keep 5]
+ *   node src/cli.js backup --to /data/backups/pre-<sha>.db [--keep 5]
  */
 
-import {dirname, basename} from 'node:path';
+import {readdirSync, statSync, unlinkSync} from 'node:fs';
+import {basename, dirname, join} from 'node:path';
 
-import {buildHealth} from './app/health.js';
-import {backupDatabase, isDatabaseHealthy, openDatabase} from './infra/sqlite/database.js';
-import {pruneOldBackups} from './infra/files/prune.js';
-import {applyMigrations, schemaVersion} from './infra/sqlite/migrations.js';
+import {Health} from './app/health.js';
+import {Prune} from './infra/files/prune.js';
+import {Database} from './infra/sqlite/database.js';
+import {Migrations} from './infra/sqlite/migrations.js';
+
+const {DATABASE_PATH = '/data/ludoteca.db', APP_VERSION = 'dev'} = process.env;
 
 /**
- * Escribe una línea de log en JSON.
+ * Writes one JSON log line.
  *
- * @param {object} event Campos del evento.
+ * @param {object} event Event fields.
  * @returns {void}
  */
 const log = (event) => console.log(JSON.stringify(event));
-const databasePath = process.env.DATABASE_PATH ?? '/data/ludoteca.db';
-const version = process.env.APP_VERSION ?? 'dev';
 
 /**
- * Lee una opción con valor de la línea de comandos.
+ * Reads an option with a value from the command line.
  *
- * @param {string[]} args Argumentos restantes.
- * @param {string} flag Nombre de la opción, con guiones (`--to`).
- * @returns {string | undefined} Valor encontrado.
+ * @param {string[]} args Remaining arguments.
+ * @param {string} flag Option name, dashes included (`--to`).
+ * @returns {string | undefined} Found value.
  */
 const option = (args, flag) => {
   const index = args.indexOf(flag);
@@ -38,76 +39,74 @@ const option = (args, flag) => {
 };
 
 /**
- * Versión del esquema aplicada, o 0 si la tabla de control no existe todavía.
+ * Reports the service status and the exit code the healthcheck expects.
  *
- * @param {import('node:sqlite').DatabaseSync} db Base abierta.
- * @returns {number} Versión aplicada.
- */
-const safeSchemaVersion = (db) => {
-  try {
-    return schemaVersion(db);
-  } catch {
-    return 0;
-  }
-};
-
-/**
- * Devuelve el estado del servicio y el código de salida que espera el healthcheck.
- *
- * @returns {number} 0 si el servicio está listo, 1 si no.
+ * @returns {number} 0 when the service is ready, 1 otherwise.
  */
 const health = () => {
-  const db = openDatabase(databasePath);
-  const dbOk = isDatabaseHealthy(db);
-  const body = buildHealth({
-    version,
+  const database = Database({path: DATABASE_PATH});
+  const migrations = Migrations({database});
+  const dbOk = database.isHealthy();
+  let schema = 0;
+
+  if (dbOk) {
+    try {
+      schema = migrations.version();
+    } catch {
+      schema = 0;
+    }
+  }
+
+  const body = Health().build({
+    version: APP_VERSION,
     dbOk,
-    schema: dbOk ? safeSchemaVersion(db) : 0,
+    schema,
     now: new Date().toISOString(),
   });
 
   log(body);
-  db.close();
+  database.close();
 
   return body.status === 'ok' ? 0 : 1;
 };
 
 /**
- * Aplica las migraciones pendientes e informa de cuántas han entrado.
+ * Applies the pending migrations and reports how many went in.
  *
- * @returns {number} Código de salida.
+ * @returns {number} Exit code.
  */
 const migrate = () => {
-  const db = openDatabase(databasePath);
-  const result = applyMigrations(db, new Date().toISOString());
+  const database = Database({path: DATABASE_PATH});
+  const result = Migrations({database}).apply();
+
   log({command: 'migrate', applied: result.applied, schema: result.version});
-  db.close();
+  database.close();
 
   return 0;
 };
 
 /**
- * Copia la base con `VACUUM INTO` y, si se pide, recorta las copias antiguas.
+ * Copies the database with `VACUUM INTO` and trims the old copies.
  *
- * @param {string[]} args Argumentos restantes de `backup`.
- * @returns {number} Código de salida.
+ * @param {string[]} args Remaining `backup` arguments.
+ * @returns {number} Exit code.
  */
 const backup = (args) => {
   const target = option(args, '--to');
   const keep = Number.parseInt(option(args, '--keep') ?? '', 10);
 
   if (target === undefined) {
-    log({command: 'backup', error: 'falta --to'});
+    log({command: 'backup', error: 'missing --to'});
     return 2;
   }
 
-  const db = openDatabase(databasePath);
-  backupDatabase(db, target);
-  db.close();
+  const database = Database({path: DATABASE_PATH});
+  database.backup(target);
+  database.close();
 
-  const removed = Number.isNaN(keep)
-    ? []
-    : pruneOldBackups(dirname(target), 'pre-', '.db', keep);
+  const removed = Number.isNaN(keep) ? [] : Prune({fs: {readdirSync, statSync, unlinkSync}, join})
+    .oldBackups(dirname(target), 'pre-', '.db', keep);
+
   log({command: 'backup', to: basename(target), pruned: removed.length});
 
   return 0;
@@ -124,7 +123,7 @@ const [command = '', ...args] = process.argv.slice(2);
 const run = COMMANDS[command];
 
 if (run === undefined) {
-  log({error: `comando desconocido: ${command}`, commands: Object.keys(COMMANDS)});
+  log({error: `unknown command: ${command}`, commands: Object.keys(COMMANDS)});
   process.exit(2);
 }
 

@@ -1,42 +1,72 @@
 /**
- * Resultados como valores: una función de dominio devuelve éxito o error, nunca lanza.
- * El borde traduce el código estable a la respuesta HTTP y la interfaz a un texto.
+ * Results as values: a domain function returns success or failure and never
+ * throws. The error carries a stable code and the parameters the interface
+ * needs to render a sentence; the text itself lives in the UI catalogue, so
+ * the domain holds no human wording.
  *
- * @typedef {{code: string, message: string}} DomainError
+ * @typedef {{code: string, params: Record<string, string | number>}} DomainError
  * @typedef {{ok: true, value: unknown}} OkShape
  * @typedef {{ok: false, error: DomainError}} FailShape
  */
 
-/**
- * Envuelve un valor en un resultado correcto.
- *
- * @template T
- * @param {T} value Valor que devuelve la operación.
- * @returns {{ok: true, value: T}} Resultado con el valor dentro.
- */
-export const ok = (value) => ({ok: true, value});
+import * as R from 'ramda';
 
 /**
- * Construye un fallo con código estable y mensaje para la persona.
+ * Builds the result module.
  *
- * @param {string} code Código estable (`GAME_NOT_AVAILABLE`, `EVENT_CLOSED`…).
- * @param {string} message Texto en castellano que dice qué hacer.
- * @returns {{ok: false, error: DomainError}} Resultado fallido.
+ * A factory rather than a bag of exports: callers receive the instance they
+ * need and tests can build their own. No configuration today; the day one is
+ * needed it arrives as the object this function takes.
+ *
+ * @returns {{ok: Function, fail: Function, isOk: Function, isFail: Function,
+ *   unwrapOr: Function}} Result helpers.
  */
-export const fail = (code, message) => ({ok: false, error: {code, message}});
+const Result = () => {
+  /**
+   * Wraps a value in a successful result.
+   *
+   * @template T
+   * @param {T} value Value produced by the operation.
+   * @returns {{ok: true, value: T}} Successful result.
+   */
+  const ok = (value) => ({ok: true, value});
 
-/**
- * Indica si el resultado es correcto.
- *
- * @param {OkShape | FailShape} result Resultado a inspeccionar.
- * @returns {boolean} `true` cuando la operación salió bien.
- */
-export const isOk = (result) => result.ok === true;
+  /**
+   * Builds a failure from a stable code and its parameters.
+   *
+   * @param {string} code Stable code (`GAME_NOT_AVAILABLE`, `EVENT_CLOSED`…).
+   * @param {Record<string, string | number>} [params] Data the message needs.
+   * @returns {{ok: false, error: DomainError}} Failed result.
+   */
+  const fail = (code, params = {}) => ({ok: false, error: {code, params}});
 
-/**
- * Indica si el resultado es un fallo.
- *
- * @param {OkShape | FailShape} result Resultado a inspeccionar.
- * @returns {boolean} `true` cuando la operación falló.
- */
-export const isFail = (result) => result.ok === false;
+  /**
+   * Tells whether a result is successful.
+   *
+   * @param {OkShape | FailShape} result Result to inspect.
+   * @returns {boolean} True when the operation succeeded.
+   */
+  const isOk = R.propEq(true, 'ok');
+
+  /**
+   * Tells whether a result is a failure.
+   *
+   * @param {OkShape | FailShape} result Result to inspect.
+   * @returns {boolean} True when the operation failed.
+   */
+  const isFail = R.propEq(false, 'ok');
+
+  /**
+   * Returns the value of a successful result and a fallback otherwise.
+   *
+   * @param {*} fallback Value used when the result is a failure.
+   * @param {OkShape | FailShape} result Result to read.
+   * @returns {*} The value or the fallback.
+   */
+  const unwrapOr = R.curry((fallback, result) =>
+    R.propOr(fallback, 'value', result));
+
+  return Object.freeze({ok, fail, isOk, isFail, unwrapOr});
+};
+
+export {Result};

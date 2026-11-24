@@ -55,18 +55,22 @@ export default [
     files: ['src/domain/**/*.js', 'src/app/**/*.js'],
     rules: {
       'no-restricted-syntax': ['error',
-        {selector: 'ClassDeclaration', message: 'Composición de funciones: sin clases.'},
-        {selector: 'ClassExpression', message: 'Composición de funciones: sin clases.'},
-        {selector: 'NewExpression', message: 'Sin new en el núcleo; el borde construye y pasa los datos.'},
-        {selector: 'ThisExpression', message: 'Sin this en el núcleo.'},
-        {selector: "CallExpression[callee.name='Date']", message: 'El instante se pasa como parámetro.'},
+        {selector: 'ClassDeclaration', message: 'Function composition: no classes.'},
+        {selector: 'ClassExpression', message: 'Function composition: no classes.'},
+        {selector: 'NewExpression', message: 'No new in the core; the edge builds and passes data in.'},
+        {selector: 'ThisExpression', message: 'No this in the core.'},
+        {selector: "CallExpression[callee.name='Date']", message: 'The instant arrives as a parameter.'},
       ],
     },
   },
   {
     files: ['src/domain/**/*.js'],
     rules: {
-      'no-restricted-imports': ['error', {patterns: [{group: ['*'], message: 'domain no importa nada externo: solo módulos relativos.'}]}],
+      // Ramda is allowed: it is a set of pure functions with no I/O, so it does
+      // not couple the domain to a framework. Everything else stays out.
+      'no-restricted-imports': ['error', {
+        patterns: [{group: ['*', '!ramda'], message: 'domain imports only relative modules and ramda.'}],
+      }],
     },
   },
   {
