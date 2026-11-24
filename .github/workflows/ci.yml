@@ -117,27 +117,29 @@ jobs:
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
           exit $rc
       - name: Comprobar por HTTPS
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           AUTH="${{ secrets.STG_BASIC_AUTH }}"
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
           code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
             "https://ludoteca-stg.floyd303.com/health")
-          # La comprobación también va al fichero que acaba en el issue: si no,
-          # el fallo se queda en un log que solo se ve con sesión en GitHub.
+          # El registro va también al fichero que acaba en el issue: si no, el
+          # fallo se queda en un log que solo se ve con sesión en GitHub.
           {
             echo "comprobación staging: http $code"
-            cat "$RUNNER_TEMP/body.json"
+            cat "$RUNNER_TEMP/body.json" 2>/dev/null
             echo
+            case "$code" in
+              401|403) echo "staging exige autenticación: revisa el secret STG_BASIC_AUTH (usuario:contraseña)" ;;
+              200) ;;
+              *) echo "respuesta inesperada de staging: $code" ;;
+            esac
+            grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json" ||
+              echo "la versión servida no es $TAG"
           } | tee -a "$RUNNER_TEMP/deploy.log"
-          case "$code" in
-            401|403)
-              echo "staging exige autenticación: define el secret STG_BASIC_AUTH como usuario:contraseña"
-              exit 1
-              ;;
-            200) ;;
-            *) echo "respuesta inesperada de staging: $code"; exit 1 ;;
-          esac
-          grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\"" "$RUNNER_TEMP/body.json"
+          [ "$code" = "200" ] || exit 1
+          grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json"
       - name: Publicar el fallo en un issue
         if: failure()
         env:
@@ -200,16 +202,20 @@ jobs:
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
           exit $rc
       - name: Comprobar por HTTPS
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
         run: |
           code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' \
             "https://ludoteca.floyd303.com/health")
           {
             echo "comprobación producción: http $code"
-            cat "$RUNNER_TEMP/body.json"
+            cat "$RUNNER_TEMP/body.json" 2>/dev/null
             echo
+            grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json" ||
+              echo "la versión servida no es $TAG"
           } | tee -a "$RUNNER_TEMP/deploy.log"
-          [ "$code" = "200" ] || { echo "respuesta inesperada de producción: $code"; exit 1; }
-          grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\"" "$RUNNER_TEMP/body.json""
+          [ "$code" = "200" ] || exit 1
+          grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json"
       - name: Publicar el fallo en un issue
         if: failure()
         env:
