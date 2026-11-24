@@ -1,6 +1,6 @@
 name: ci
 
-# Pruebas en cada rama y PR; imagen y despliegue solo cuando el código entra en main.
+# Tests on every branch and pull request; image and deploy only when code lands in main.
 on:
   push:
     branches: [main]
@@ -31,18 +31,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
-      - name: Audit de dependencias
+      - name: Dependency audit
         run: npm audit --audit-level=high
       - name: Gate del despliegue
         run: sh deploy/gate-selftest.sh
-      - name: Material de clave privada
+      - name: Private key material
         run: |
-          # El propio workflow nombra el marcador que busca, así que se excluye.
+          # The workflow itself names the marker it looks for, so it is excluded.
           hits=$(grep -rIlE -e '-----BEGIN (RSA|OPENSSH|EC|PGP) PRIVATE KEY-----' \
             --include='*.js' --include='*.json' --include='*.yml' --include='*.md' \
             --exclude-dir=.github --exclude-dir=node_modules . || true)
           if [ -n "$hits" ]; then
-            echo "Clave privada en:"
+            echo "Private key found in:"
             echo "$hits"
             exit 1
           fi
@@ -84,31 +84,31 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: tag
-        # El output de otro job no sobrevive a «Re-run failed jobs», así que la
-        # etiqueta se calcula aquí a partir del commit que se está desplegando.
+        # Another job's output does not survive a re-run of failed jobs, so the
+        # tag is computed here from the commit being deployed.
         run: echo "tag=sha-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
-      - name: Clave de despliegue y host conocido
+      - name: Deploy key and known host
         env:
-          # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
-          # un secreto: fijarla aquí evita depender de que el secret esté pegado
-          # con el formato exacto de known_hosts.
+          # Fingerprint of the server ed25519 key. A public key is not a
+          # secret: pinning it here removes the dependency on the secret being
+          # pasted in the exact known_hosts shape.
           EXPECTED: SHA256:LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
-            { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
+            { echo "SSH_KEY does not hold an OpenSSH private key"; exit 1; }
           ssh-keyscan -t ed25519 "${{ secrets.SSH_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
           [ -s ~/.ssh/known_hosts ] ||
-            { echo "no se pudo leer la clave del host ${{ secrets.SSH_HOST }}"; exit 1; }
+            { echo "could not read the host key of ${{ secrets.SSH_HOST }}"; exit 1; }
           actual=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)
           [ "$actual" = "$EXPECTED" ] ||
-            { echo "clave del host inesperada: $actual (se esperaba $EXPECTED)"; exit 1; }
+            { echo "unexpected host key: $actual (expected $EXPECTED)"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
-      - name: Desplegar en staging
+      - name: Deploy to staging
         run: |
           set +e
           out=$(ssh vps "deploy stg ${{ steps.tag.outputs.tag }}" 2>&1)
@@ -116,7 +116,7 @@ jobs:
           printf '%s\n' "$out"
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
           exit $rc
-      - name: Comprobar por HTTPS
+      - name: Check over HTTPS
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
@@ -124,39 +124,39 @@ jobs:
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
           code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
             "https://ludoteca-stg.floyd303.com/health")
-          # El registro va también al fichero que acaba en el issue: si no, el
-          # fallo se queda en un log que solo se ve con sesión en GitHub.
+          # The record also goes to the file that ends up in the issue: without
+          # it the failure stays in a log that needs a GitHub session to read.
           {
-            echo "comprobación staging: http $code"
+            echo "staging check: http $code"
             cat "$RUNNER_TEMP/body.json" 2>/dev/null
             echo
             case "$code" in
-              401|403) echo "staging exige autenticación: revisa el secret STG_BASIC_AUTH (usuario:contraseña)" ;;
+              401|403) echo "staging requires authentication: check the STG_BASIC_AUTH secret (user:password)" ;;
               200) ;;
-              *) echo "respuesta inesperada de staging: $code" ;;
+              *) echo "unexpected answer from staging: $code" ;;
             esac
             grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json" ||
-              echo "la versión servida no es $TAG"
+              echo "the served version is not $TAG"
           } | tee -a "$RUNNER_TEMP/deploy.log"
           [ "$code" = "200" ] || exit 1
           grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json"
-      - name: Publicar el fallo en un issue
+      - name: Publish the failure as an issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           {
-            echo "El despliegue en **staging** falló con la etiqueta \`$TAG\`."
+            echo "The staging deploy failed with tag \`$TAG\`."
             echo
             echo '```'
-            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "sin salida capturada"
+            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "no output captured"
             echo '```'
             echo
             echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } > "$RUNNER_TEMP/body.md"
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "Despliegue en staging falló ($TAG)" \
+            --title "Staging deploy failed ($TAG)" \
             --body-file "$RUNNER_TEMP/body.md"
 
   deploy-production:
@@ -169,31 +169,31 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - id: tag
-        # El output de otro job no sobrevive a «Re-run failed jobs», así que la
-        # etiqueta se calcula aquí a partir del commit que se está desplegando.
+        # Another job's output does not survive a re-run of failed jobs, so the
+        # tag is computed here from the commit being deployed.
         run: echo "tag=sha-$(echo "$GITHUB_SHA" | cut -c1-7)" >> "$GITHUB_OUTPUT"
-      - name: Clave de despliegue y host conocido
+      - name: Deploy key and known host
         env:
-          # Fingerprint de la clave ed25519 del servidor. Una clave pública no es
-          # un secreto: fijarla aquí evita depender de que el secret esté pegado
-          # con el formato exacto de known_hosts.
+          # Fingerprint of the server ed25519 key. A public key is not a
+          # secret: pinning it here removes the dependency on the secret being
+          # pasted in the exact known_hosts shape.
           EXPECTED: SHA256:LFucYCBmSCyjI1mNf/QpVjVhqlAlCwRCB5Jau1j6n38
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.SSH_KEY }}" > ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
           grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy ||
-            { echo "SSH_KEY no contiene una clave privada OpenSSH"; exit 1; }
+            { echo "SSH_KEY does not hold an OpenSSH private key"; exit 1; }
           ssh-keyscan -t ed25519 "${{ secrets.SSH_HOST }}" > ~/.ssh/known_hosts 2>/dev/null
           [ -s ~/.ssh/known_hosts ] ||
-            { echo "no se pudo leer la clave del host ${{ secrets.SSH_HOST }}"; exit 1; }
+            { echo "could not read the host key of ${{ secrets.SSH_HOST }}"; exit 1; }
           actual=$(ssh-keygen -lf ~/.ssh/known_hosts | awk '{print $2}' | head -1)
           [ "$actual" = "$EXPECTED" ] ||
-            { echo "clave del host inesperada: $actual (se esperaba $EXPECTED)"; exit 1; }
+            { echo "unexpected host key: $actual (expected $EXPECTED)"; exit 1; }
           printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/id_deploy\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' \
             "${{ secrets.SSH_HOST }}" "${{ secrets.SSH_USER }}" > ~/.ssh/config
           chmod 600 ~/.ssh/config
-      - name: Desplegar en producción
+      - name: Deploy to production
         run: |
           set +e
           out=$(ssh vps "deploy prod ${{ steps.tag.outputs.tag }}" 2>&1)
@@ -201,36 +201,36 @@ jobs:
           printf '%s\n' "$out"
           printf '%s\n' "$out" > "$RUNNER_TEMP/deploy.log"
           exit $rc
-      - name: Comprobar por HTTPS
+      - name: Check over HTTPS
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' \
             "https://ludoteca.floyd303.com/health")
           {
-            echo "comprobación producción: http $code"
+            echo "production check: http $code"
             cat "$RUNNER_TEMP/body.json" 2>/dev/null
             echo
             grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json" ||
-              echo "la versión servida no es $TAG"
+              echo "the served version is not $TAG"
           } | tee -a "$RUNNER_TEMP/deploy.log"
           [ "$code" = "200" ] || exit 1
           grep -q "version\":\"$TAG" "$RUNNER_TEMP/body.json"
-      - name: Publicar el fallo en un issue
+      - name: Publish the failure as an issue
         if: failure()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           {
-            echo "El despliegue en **producción** falló con la etiqueta \`$TAG\`."
+            echo "The production deploy failed with tag \`$TAG\`."
             echo
             echo '```'
-            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "sin salida capturada"
+            tail -n 40 "$RUNNER_TEMP/deploy.log" 2>/dev/null || echo "no output captured"
             echo '```'
             echo
             echo "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           } > "$RUNNER_TEMP/body.md"
           gh issue create --repo "$GITHUB_REPOSITORY" \
-            --title "Despliegue en producción falló ($TAG)" \
+            --title "Production deploy failed ($TAG)" \
             --body-file "$RUNNER_TEMP/body.md"

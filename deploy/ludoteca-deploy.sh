@@ -21,7 +21,7 @@ case "$ENV" in prod|stg) ;; *) echo "unknown environment" >&2; exit 2 ;; esac
 BASE="$ROOT/$ENV"
 [ -f "$BASE/.env" ] || { echo "missing $BASE/.env" >&2; exit 2; }
 [ -f "$BASE/compose.yaml" ] || {
-  echo "falta $BASE/compose.yaml; el nombre exacto importa (compose.yml no se encuentra)" >&2
+  echo "missing $BASE/compose.yaml; the exact name matters (compose.yml is not found)" >&2
   exit 2
 }
 
@@ -41,7 +41,7 @@ ghcr_login() {
   [ -n "${GHCR_TOKEN:-}" ] || return 0
   if ! printf '%s' "$GHCR_TOKEN" |
       docker login ghcr.io -u "${GHCR_USER:-github}" --password-stdin >/dev/null 2>&1; then
-    echo "no se pudo autenticar en ghcr.io con GHCR_USER/GHCR_TOKEN" >&2
+    echo "ghcr.io rejected GHCR_USER/GHCR_TOKEN" >&2
     return 1
   fi
 }
@@ -52,9 +52,9 @@ pull_image() {
   ghcr_login || return 1
   if ! docker pull "$IMAGE:$1" >/dev/null; then
     {
-      echo "no se pudo descargar $IMAGE:$1"
-      echo "si el paquete es privado: guarda un token read:packages en $BASE/.env"
-      echo "  GHCR_USER=<usuario> y GHCR_TOKEN=<token>; el despliegue hará docker login solo"
+      echo "could not pull $IMAGE:$1"
+      echo "if the package is private: keep a read:packages token in $BASE/.env"
+      echo "  GHCR_USER=<user> and GHCR_TOKEN=<token>; the deploy logs in by itself"
     } >&2
     return 1
   fi

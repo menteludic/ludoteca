@@ -1,10 +1,11 @@
-# Compose de producción y staging. Se instala a mano en
-# /home/ubuntu/docker/ludoteca/{prod,stg}/compose.yaml y solo se toca
-# cuando cambia este fichero. Un despliegue normal solo mueve TAG en el .env.
+# Production and staging compose. Installed by hand at
+# /home/ubuntu/docker/ludoteca/{prod,stg}/compose.yaml and only touched when
+# this file changes. A normal deploy only moves TAG in the .env.
 #
-# Requiere en el .env de cada entorno: ENV_NAME (prod o stg) y TAG.
-# No publica puertos: el proxy llega por la red «proxy» y no se expone nada
-# en el host (ADR-019). La salud se pregunta con `docker compose exec`.
+# Requires ENV_NAME (prod or stg) and TAG in each environment .env file.
+# Publishes no ports: the proxy reaches the app over the "proxy" network and
+# nothing is exposed on the host (ADR-019). Health is asked with
+# `docker compose exec`.
 name: ludoteca-${ENV_NAME:?define ENV_NAME en .env}
 
 services:

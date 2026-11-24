@@ -1,140 +1,133 @@
 #!/bin/sh
-# preflight.sh — comprobaciones de la puesta en marcha del servidor.
-# Solo lectura: no crea, no borra y no imprime secretos.
+# preflight.sh — read-only checks for the server set-up.
+# It creates nothing, deletes nothing and never prints a secret.
 #
-#   sh preflight.sh [ruta-base]      # por defecto /home/ubuntu/docker/ludoteca
+#   sh preflight.sh [base path]      # defaults to /home/ubuntu/docker/ludoteca
 #
-# Devuelve 0 si todo está en orden y el número de fallos en caso contrario.
+# Exits 0 when everything is in order and the number of failures otherwise.
 set -u
 
 ROOT=${1:-/home/ubuntu/docker/ludoteca}
 fails=0
 ok()   { printf 'OK    %s\n' "$*"; }
-bad()  { printf 'FALTA %s\n' "$*"; fails=$((fails + 1)); }
+bad()  { printf 'FAIL  %s\n' "$*"; fails=$((fails + 1)); }
 info() { printf 'INFO  %s\n' "$*"; }
-note() { printf '      %s\n' "$*"; }
 
 env_value() { grep -E "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2-; }
 
 echo "== Docker"
-if docker version >/dev/null 2>&1; then ok "docker responde"; else bad "docker no responde (¿grupo docker?)"; fi
-if docker compose version >/dev/null 2>&1; then ok "compose v2: $(docker compose version --short 2>/dev/null)"; else bad "docker compose v2 no disponible"; fi
+if docker version >/dev/null 2>&1; then ok "docker answers"; else bad "docker does not answer (docker group?)"; fi
+if docker compose version >/dev/null 2>&1; then ok "compose v2: $(docker compose version --short 2>/dev/null)"; else bad "docker compose v2 not available"; fi
 
 echo
-echo "== Red compartida"
+echo "== Shared network"
 if docker network inspect proxy >/dev/null 2>&1; then
   members=$(docker network inspect proxy -f '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null)
-  ok "red proxy existe: $members"
+  ok "proxy network exists: $members"
   case "$members" in
-    *proxy*|*nginx*) ok "el proxy está conectado a proxy" ;;
-    *) bad "ningún contenedor con «proxy» o «nginx» en la red proxy; el nombre de servicio no resolverá" ;;
+    *proxy*|*nginx*) ok "the proxy is attached to proxy" ;;
+    *) bad "no container named like proxy or nginx on the proxy network; the service name will not resolve" ;;
   esac
 else
-  bad "la red proxy no existe (docker network create proxy)"
+  bad "the proxy network does not exist (docker network create proxy)"
 fi
 
 echo
 for env in prod stg; do
   echo "== $env ($ROOT/$env)"
   base="$ROOT/$env"
-  [ -d "$base" ] || { bad "$base no existe"; continue; }
+  [ -d "$base" ] || { bad "$base does not exist"; continue; }
 
   if [ -f "$base/.env" ]; then
     perms=$(stat -c '%a' "$base/.env")
-    [ "$perms" = "600" ] && ok ".env existe (600)" || bad ".env con permisos $perms, debería ser 600"
+    [ "$perms" = "600" ] && ok ".env exists (600)" || bad ".env has mode $perms, expected 600"
     for k in ENV_NAME TAG BASE_URL TRUST_PROXY_HOPS DATABASE_PATH IMAGES_DIR DNI_KEY SMTP_FROM; do
-      if [ -n "$(env_value "$base/.env" "$k")" ]; then :; else bad "falta $k en .env"; fi
+      if [ -n "$(env_value "$base/.env" "$k")" ]; then :; else bad "$k missing from .env"; fi
     done
     hops=$(env_value "$base/.env" TRUST_PROXY_HOPS)
-    ok "TRUST_PROXY_HOPS=$hops (1 si Cloudflare es solo DNS)"
-    [ "$(env_value "$base/.env" TAG)" = "" ] && bad "TAG vacío"
+    ok "TRUST_PROXY_HOPS=$hops (1 while Cloudflare is DNS only)"
+    [ "$(env_value "$base/.env" TAG)" = "" ] && bad "TAG is empty"
     if grep -q '^[[:space:]]*ports:' "$base/compose.yaml" 2>/dev/null; then
-      bad "el compose publica puertos; la app debe vivir solo en la red proxy (ADR-019)"
+      bad "the compose file publishes ports; the app lives only on the proxy network (ADR-019)"
     fi
   else
-    bad "falta .env"
+    bad ".env is missing"
   fi
 
   if [ -f "$base/compose.yaml" ]; then
     if (cd "$base" && docker compose config -q 2>/dev/null); then
-      ok "compose.yaml válido"
+      ok "compose.yaml is valid"
     else
-      bad "compose.yaml no valida (cd $base && docker compose config)"
+      bad "compose.yaml does not validate (cd $base && docker compose config)"
     fi
   else
-    bad "falta compose.yaml (copiar deploy/compose.yaml del repo)"
+    bad "compose.yaml is missing (copy deploy/compose.yaml from the repository)"
   fi
 
-  [ -d "$base/data/images" ] && ok "data/images existe" || bad "falta data/images"
-  [ -d "$base/data/backups" ] && ok "data/backups existe" || bad "falta data/backups (el backup escribe ahí)"
+  [ -d "$base/data/images" ] && ok "data/images exists" || bad "data/images is missing"
+  [ -d "$base/data/backups" ] && ok "data/backups exists" || bad "data/backups is missing (the backup writes there)"
   owner=$(stat -c '%u:%g' "$base/data" 2>/dev/null)
   case "$owner" in
-    10001:10001) ok "data pertenece a 10001:10001" ;;
-    *) bad "data pertenece a $owner; debería ser 10001:10001 (readonly database)" ;;
+    10001:10001) ok "data belongs to 10001:10001" ;;
+    *) bad "data belongs to $owner; it should be 10001:10001 (readonly database)" ;;
   esac
   if sudo -n true 2>/dev/null; then
     if sudo -n -u '#10001' sh -c "touch '$base/data/.probe' && rm '$base/data/.probe'" 2>/dev/null; then
-      ok "UID 10001 escribe en data"
+      ok "UID 10001 can write to data"
     else
-      bad "UID 10001 no puede escribir en data"
+      bad "UID 10001 cannot write to data"
     fi
   else
-    info "sin sudo sin contraseña: no se comprueba la escritura como UID 10001"
+    info "passwordless sudo unavailable: write access as UID 10001 not checked"
   fi
 done
 
 echo
-echo "== Claves de cifrado"
+echo "== Encryption keys"
 if [ -f "$ROOT/prod/.env" ] && [ -f "$ROOT/stg/.env" ]; then
   a=$(env_value "$ROOT/prod/.env" DNI_KEY | sha256sum | cut -d' ' -f1)
   b=$(env_value "$ROOT/stg/.env" DNI_KEY | sha256sum | cut -d' ' -f1)
-  [ -n "$a" ] && [ "$a" != "$b" ] && ok "DNI_KEY distinta en cada entorno" || bad "DNI_KEY vacía o compartida entre prod y stg"
+  [ -n "$a" ] && [ "$a" != "$b" ] && ok "DNI_KEY differs between environments" || bad "DNI_KEY is empty or shared between prod and stg"
 fi
 
 echo
-echo "== Wrapper de despliegue"
-awk='/home/ubuntu/.ssh/authorized_keys'
-if [ -f "$awk" ]; then
-  line=$(grep -m1 'command=' "$awk")
+echo "== Deploy wrapper"
+auth='/home/ubuntu/.ssh/authorized_keys'
+if [ -f "$auth" ]; then
+  line=$(grep -m1 'command=' "$auth")
   if [ -n "$line" ]; then
     script=$(printf '%s' "$line" | sed -n 's/.*command="\([^"]*\)".*/\1/p')
-    ok "authorized_keys con command=$script"
+    ok "authorized_keys runs command=$script"
     if [ -f "$script" ]; then
-      ok "el wrapper existe"
-      if sh -n "$script" 2>/dev/null; then ok "el wrapper pasa sh -n"; else bad "el wrapper tiene errores de sintaxis"; fi
+      ok "the wrapper exists"
+      if sh -n "$script" 2>/dev/null; then ok "the wrapper passes sh -n"; else bad "the wrapper has syntax errors"; fi
       owner=$(stat -c '%U' "$script")
-      [ "$owner" = "root" ] && ok "el wrapper es de root" || info "el wrapper es de $owner (mejor root:root 0755)"
+      [ "$owner" = "root" ] && ok "the wrapper belongs to root" || info "the wrapper belongs to $owner (root:root 0755 is better)"
     else
-      bad "authorized_keys apunta a $script, que no existe"
+      bad "authorized_keys points to $script, which does not exist"
     fi
   else
-    bad "authorized_keys no tiene ninguna entrada con command="
+    bad "authorized_keys has no entry with command="
   fi
 else
-  bad "no existe $awk"
+  bad "$auth does not exist"
 fi
 
 echo
-echo "== Imagen en GHCR"
+echo "== Image on GHCR"
 code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 "https://ghcr.io/v2/menteludic/ludoteca/tags/list" 2>/dev/null)
 case "$code" in
-  200) ok "paquete público y con etiquetas" ;;
-  401) info "paquete privado o todavía sin publicar (401). Si es privado, el servidor necesita docker login" ;;
-  *) info "respuesta inesperada de GHCR: $code" ;;
+  200) ok "package is public and has tags" ;;
+  401) info "package is private or not published yet (401); if private, the server needs docker login" ;;
+  *) info "unexpected answer from GHCR: $code" ;;
 esac
 
 echo
 echo "== Host"
-df -h / | awk 'NR==2 {print "      disco: "$4" libres de "$2}'
-info "hora del servidor: $(date -u '+%F %T %Z')"
-if command -v ufw >/dev/null 2>&1; then
-  if sudo -n ufw status 2>/dev/null | grep -q 'Status: active'; then
-    sudo -n ufw status | grep -E ':4000 |:4001 ' || info "4000/4001 no aparecen en ufw (se publican solo en 127.0.0.1)"
-  else
-    info "ufw inactivo o sin sudo: no se comprueba"
-  fi
-fi
+df -h / | awk 'NR==2 {print "      disk: "$4" free of "$2}'
+info "server time: $(date -u '+%F %T %Z')"
+info "no ports are published, so there is nothing to check in the firewall"
 
 echo
-echo "fallos: $fails"
+echo "failures: $fails"
 [ "$fails" -eq 0 ]
