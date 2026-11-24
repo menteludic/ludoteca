@@ -7,7 +7,7 @@ Aplicación de préstamo de juegos para los eventos de la asociación. Este fich
 | Qué | Cómo |
 |---|---|
 | Instalar | `make install` (`npm ci`, requiere `package-lock.json` en el repo) |
-| Comprobar todo | `make check` = lint + tipos + pruebas con cobertura |
+| Comprobar todo | `make check` = lint + tipos + pruebas con cobertura + banco de pruebas del script de despliegue |
 | Solo pruebas | `make test` |
 | Arrancar | `make start` |
 | Despliegue local | `docker compose up` con `deploy/compose.yaml` adaptado |
