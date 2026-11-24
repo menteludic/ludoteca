@@ -46,7 +46,7 @@ const Result = () => {
    * @param {OkShape | FailShape} result Result to inspect.
    * @returns {boolean} True when the operation succeeded.
    */
-  const isOk = R.propEq(true, 'ok');
+  const isOk = (result) => result.ok === true;
 
   /**
    * Tells whether a result is a failure.
@@ -54,17 +54,19 @@ const Result = () => {
    * @param {OkShape | FailShape} result Result to inspect.
    * @returns {boolean} True when the operation failed.
    */
-  const isFail = R.propEq(false, 'ok');
+  const isFail = (result) => result.ok === false;
 
   /**
    * Returns the value of a successful result and a fallback otherwise.
    *
+   * Curried with Ramda on purpose: `unwrapOr(0)` gives a function that can be
+   * mapped over a list of results, which the plain two-argument version cannot.
+   *
    * @param {*} fallback Value used when the result is a failure.
-   * @param {OkShape | FailShape} result Result to read.
-   * @returns {*} The value or the fallback.
+   * @param {OkShape | FailShape} [result] Result to read.
+   * @returns {*} The value, the fallback, or a function waiting for the result.
    */
-  const unwrapOr = R.curry((fallback, result) =>
-    R.propOr(fallback, 'value', result));
+  const unwrapOr = R.curry((fallback, result) => (isOk(result) ? result.value : fallback));
 
   return Object.freeze({ok, fail, isOk, isFail, unwrapOr});
 };

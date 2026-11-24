@@ -30,6 +30,15 @@ test('unwrapOr returns the value or the fallback', () => {
   assert.equal(result.unwrapOr('none', result.fail('X')), 'none');
 });
 
+test('unwrapOr is curried, so it can be applied in two steps', () => {
+  const orNone = result.unwrapOr('none');
+
+  assert.equal(typeof orNone, 'function');
+  assert.equal(orNone(result.ok('value')), 'value');
+  assert.equal(orNone(result.fail('X')), 'none');
+  assert.deepEqual([result.ok(1), result.fail('X')].map(orNone), [1, 'none']);
+});
+
 test('the module is frozen so nobody swaps its functions', () => {
   assert.equal(Object.isFrozen(result), true);
 });

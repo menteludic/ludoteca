@@ -4,8 +4,6 @@
  * never from this module.
  */
 
-import * as R from 'ramda';
-
 const DEFAULT_BASE = 'https://ludoteca.example/problems/';
 
 /**
@@ -28,7 +26,7 @@ const Problem = ({baseUrl = DEFAULT_BASE, titles = {}} = {}) => {
    */
   const build = (status, code, detail) => ({
     type: `${baseUrl}${code.toLowerCase()}`,
-    title: R.propOr('Error', String(status), titles),
+    title: titles[String(status)] ?? 'Error',
     status,
     code,
     detail,

@@ -54,9 +54,20 @@ export {Result};
 - El estado privado vive en el closure: quien usa `Database` no ve el driver, solo `exec`, `prepare`, `isHealthy`, `backup` y `close`.
 - Se puede exportar la fábrica y nada más. La excepción se justifica en el propio fichero.
 
+**Qué se inyecta y qué no.** La regla que evita que las firmas crezcan sin control:
+
+| Módulo | Cómo llega |
+|---|---|
+| Tiene configuración, estado o efectos (`Database`, `Migrations`, `Prune`, `Problem`, `App`) | Siempre inyectado. Sin valores por defecto ocultos: si falta, falla al construir, no al usarlo. |
+| Es puro y no tiene configuración (`Result`, `Health`) | Lo construye el compositor una vez y viaja en el objeto de dependencias del caso de uso. |
+
+Un caso de uso recibe las dependencias primero y los datos después: `createLoan(deps, input)`. Así añadir un módulo no cambia la firma de cada llamada, y el dominio sigue recibiendo datos y devolviendo datos. Dentro de una función pura no se instancia nada.
+
 ### Ramda
 
-`ramda` está disponible en todo `src/`, incluido `domain`: son funciones puras, sin I/O ni framework, así que no acoplan el núcleo. Se usa donde simplifica de verdad —`propEq`, `propOr`, `curry`, `pipe`, `groupBy`, `sortBy`— y no para reescribir `map` o `filter` sobre un array de tres elementos. Si una línea nativa se lee mejor, se queda la nativa.
+`ramda` está disponible en todo `src/`, incluido `domain`: son funciones puras, sin I/O ni framework, así que no acoplan el núcleo.
+
+Se usa **cuando aporta algo que el lenguaje no da en una línea**: `curry` y `curryN` para funciones parciales, `pipe`/`compose` para composiciones de tres pasos o más, `cond` en lugar de cadenas de `if`, `groupBy`/`sortWith` para colecciones con criterio. No se usa para reescribir una comparación, un `??` o un `map` sobre tres elementos: ahí la versión nativa se lee mejor y no obliga a nadie a conocer la librería. Hoy el único uso real es el currying de `unwrapOr` en `Result`.
 
 ## Prohibiciones
 
