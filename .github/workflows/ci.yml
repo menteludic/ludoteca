@@ -119,19 +119,27 @@ jobs:
       - name: Check over HTTPS
         env:
           TAG: ${{ steps.tag.outputs.tag }}
+          RAW_AUTH: ${{ secrets.STG_BASIC_AUTH }}
         run: |
-          AUTH="${{ secrets.STG_BASIC_AUTH }}"
+          # A secret pasted from a file carries a trailing newline, and curl
+          # then rejects the credentials as a malformed URL.
+          AUTH=$(printf '%s' "$RAW_AUTH" | tr -d '\r\n')
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
-          code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
-            "https://ludoteca-stg.floyd303.com/health")
+          set +e
+          raw=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
+            "https://ludoteca-stg.floyd303.com/health" 2>&1)
+          curl_rc=$?
+          set -e
+          code=$(printf '%s' "$raw" | tail -1)
           # The record also goes to the file that ends up in the issue: without
           # it the failure stays in a log that needs a GitHub session to read.
           {
-            echo "staging check: http $code"
+            echo "staging check: curl exit $curl_rc, http $code"
+            printf '%s\n' "$raw" | head -5
             cat "$RUNNER_TEMP/body.json" 2>/dev/null
             echo
             case "$code" in
-              401|403) echo "staging requires authentication: check the STG_BASIC_AUTH secret (user:password)" ;;
+              401|403) echo "staging requires authentication: check the STG_BASIC_AUTH secret (user:password without spaces)" ;;
               200) ;;
               *) echo "unexpected answer from staging: $code" ;;
             esac
