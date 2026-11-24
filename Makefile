@@ -1,4 +1,4 @@
-# Comandos del proyecto. Todo lo que se ejecuta se hace desde aquí.
+# Project commands. Everything that runs is run from here.
 
 NODE ?= node
 NPM ?= npm

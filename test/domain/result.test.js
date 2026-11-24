@@ -1,33 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {fail, isFail, isOk, ok} from '../../src/domain/result.js';
+import {Result} from '../../src/domain/result.js';
 
-test('ok envuelve un valor sin perderlo', () => {
-  const result = ok({id: 'g1'});
+const result = Result();
 
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.value, {id: 'g1'});
+test('ok wraps the value and reports success', () => {
+  const out = result.ok(42);
+
+  assert.deepEqual(out, {ok: true, value: 42});
+  assert.equal(result.isOk(out), true);
+  assert.equal(result.isFail(out), false);
 });
 
-test('fail guarda el código y el mensaje para la interfaz', () => {
-  const result = fail('GAME_NOT_AVAILABLE', 'El juego está prestado');
+test('fail carries a stable code and its parameters', () => {
+  const out = result.fail('GAME_NOT_AVAILABLE', {gameId: 'g1'});
 
-  assert.equal(result.ok, false);
-  assert.equal(result.error.code, 'GAME_NOT_AVAILABLE');
-  assert.equal(result.error.message, 'El juego está prestado');
+  assert.deepEqual(out, {ok: false, error: {code: 'GAME_NOT_AVAILABLE', params: {gameId: 'g1'}}});
+  assert.equal(result.isFail(out), true);
+  assert.equal(result.isOk(out), false);
 });
 
-test('isOk e isFail distinguen los dos casos', () => {
-  assert.equal(isOk(ok(1)), true);
-  assert.equal(isFail(ok(1)), false);
-  assert.equal(isOk(fail('E', 'm')), false);
-  assert.equal(isFail(fail('E', 'm')), true);
+test('fail without parameters still produces an object', () => {
+  assert.deepEqual(result.fail('EVENT_CLOSED').error.params, {});
 });
 
-test('un fallo no lanza: se puede inspeccionar sin try/catch', () => {
-  const result = fail('EVENT_CLOSED', 'Ahora no se pueden coger juegos');
+test('unwrapOr returns the value or the fallback', () => {
+  assert.equal(result.unwrapOr('none', result.ok('value')), 'value');
+  assert.equal(result.unwrapOr('none', result.fail('X')), 'none');
+});
 
-  assert.equal(result.error.code, 'EVENT_CLOSED');
-  assert.equal('value' in result, false);
+test('unwrapOr is curried, so it can be applied in two steps', () => {
+  const orNone = result.unwrapOr('none');
+
+  assert.equal(typeof orNone, 'function');
+  assert.equal(orNone(result.ok('value')), 'value');
+  assert.equal(orNone(result.fail('X')), 'none');
+  assert.deepEqual([result.ok(1), result.fail('X')].map(orNone), [1, 'none']);
+});
+
+test('the module is frozen so nobody swaps its functions', () => {
+  assert.equal(Object.isFrozen(result), true);
 });

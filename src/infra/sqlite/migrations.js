@@ -1,15 +1,14 @@
 /**
- * Migraciones del esquema. Se aplican en orden, una sola vez, dentro de una
- * transacción. El id es el número de versión que publica `/health`.
+ * Schema migrations. They run in order, once each, inside a transaction. The id
+ * is the version number `/health` publishes.
  *
- * El SQL vive aquí y no en ficheros sueltos para que la imagen no dependa de
- * copiar rutas: lo que se ejecuta es lo que se lee.
+ * The SQL lives here and not in loose files so the image does not depend on
+ * copying paths: what runs is what is read.
  *
  * @typedef {{id: number, name: string, sql: string}} Migration
  */
-
 /** @type {Migration[]} */
-export const MIGRATIONS = [
+const MIGRATIONS = [
   {
     id: 1,
     name: 'init',
@@ -172,65 +171,76 @@ export const MIGRATIONS = [
 ];
 
 /**
- * Crea la tabla de control si no existe. Es lo primero que necesita el runner.
+ * Builds the migration runner.
  *
- * @param {import('node:sqlite').DatabaseSync} db Base abierta.
- * @returns {void}
+ * @param {object} config Module configuration.
+ * @param {{exec: Function, prepare: Function}} config.database Open database.
+ * @param {() => string} [config.clock] Returns the ISO instant to record.
+ * @returns {{apply: Function, version: Function}} Migration runner.
  */
-const ensureLedger = (db) => {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      id         INTEGER PRIMARY KEY,
-      name       TEXT NOT NULL,
-      applied_at  TEXT NOT NULL
+const Migrations = ({database, clock = () => new Date().toISOString()}) => {
+  /**
+   * Creates the ledger table when it is missing. It is the first thing the
+   * runner needs.
+   *
+   * @returns {void}
+   */
+  const ensureLedger = () => {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT NOT NULL,
+        applied_at  TEXT NOT NULL
+      );
+    `);
+  };
+
+  /**
+   * Applies the pending migrations in order, one transaction each. It is
+   * idempotent: calling it twice changes nothing.
+   *
+   * @returns {{applied: number, version: number}} Applied count and final version.
+   */
+  const apply = () => {
+    ensureLedger();
+    const done = new Set(
+      /** @type {Array<{id: number}>} */ (database.prepare('SELECT id FROM schema_migrations').all())
+        .map((row) => row.id),
     );
-  `);
-};
+    let applied = 0;
 
-/**
- * Aplica las migraciones pendientes en orden y dentro de una transacción por
- * migración. Es idempotente: llamarla dos veces no cambia nada.
- *
- * @param {import('node:sqlite').DatabaseSync} db Base abierta.
- * @param {string} now Instante ISO del borde; aquí no se lee el reloj.
- * @returns {{applied: number, version: number}} Migraciones aplicadas y versión final.
- */
-export const applyMigrations = (db, now) => {
-  ensureLedger(db);
-  const done = new Set(
-    /** @type {Array<{id: number}>} */ (db.prepare('SELECT id FROM schema_migrations').all())
-      .map((row) => row.id),
-  );
-  let applied = 0;
-
-  for (const migration of MIGRATIONS) {
-    if (done.has(migration.id)) continue;
-    db.exec('BEGIN');
-    try {
-      db.exec(migration.sql);
-      db.prepare('INSERT INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)')
-        .run(migration.id, migration.name, now);
-      db.exec('COMMIT');
-      applied += 1;
-    } catch (error) {
-      db.exec('ROLLBACK');
-      throw error;
+    for (const migration of MIGRATIONS) {
+      if (done.has(migration.id)) continue;
+      database.exec('BEGIN');
+      try {
+        database.exec(migration.sql);
+        database.prepare('INSERT INTO schema_migrations (id, name, applied_at) VALUES (?, ?, ?)')
+          .run(migration.id, migration.name, clock());
+        database.exec('COMMIT');
+        applied += 1;
+      } catch (error) {
+        database.exec('ROLLBACK');
+        throw error;
+      }
     }
-  }
 
-  return {applied, version: schemaVersion(db)};
+    return {applied, version: version()};
+  };
+
+  /**
+   * Schema version applied to this database (0 when there is none yet).
+   *
+   * @returns {number} Id of the last applied migration.
+   */
+  const version = () => {
+    const row = /** @type {{version: number | null} | undefined} */ (
+      database.prepare('SELECT MAX(id) AS version FROM schema_migrations').get()
+    );
+
+    return row?.version ?? 0;
+  };
+
+  return Object.freeze({apply, version});
 };
 
-/**
- * Versión del esquema aplicada en esta base (0 si aún no hay ninguna).
- *
- * @param {import('node:sqlite').DatabaseSync} db Base abierta.
- * @returns {number} Id de la última migración aplicada.
- */
-export const schemaVersion = (db) => {
-  const row = /** @type {{version: number | null} | undefined} */ (
-    db.prepare('SELECT MAX(id) AS version FROM schema_migrations').get()
-  );
-
-  return row?.version ?? 0;
-};
+export {Migrations};

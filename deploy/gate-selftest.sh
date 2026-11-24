@@ -42,7 +42,7 @@ check() {
   if [ "$2" = "$3" ]; then
     echo "  ok   $1"
   else
-    echo "  FAIL $1: esperado [$3], obtenido [$2]"
+    echo "  FAIL $1: expected [$3], got [$2]"
     failures=$((failures + 1))
   fi
 }
@@ -54,40 +54,40 @@ reset() {
   rm -f "$W/root/stg/.last-good" "$W/root/stg/.deploy.lock"
 }
 
-echo "deploy correcto"
+echo "successful deploy"
 reset
 SSH_ORIGINAL_COMMAND="deploy stg sha-abc1234" "$W/gate.sh" > "$W/out" 2>&1 && rc=0 || rc=$?
-check "sale con 0" "$rc" "0"
-check "el .env lleva la etiqueta nueva" "$(grep -E '^TAG=' "$GATE_ENV")" "TAG=sha-abc1234"
-check "el anterior queda como último bueno" "$(cat "$W/root/stg/.last-good")" "sha-0000000"
-check "baja la etiqueta pedida" "$(head -1 "$GATE_CALLS")" "docker pull ghcr.io/menteludic/ludoteca:sha-abc1234"
-check "primero migra y luego levanta" \
+check "exits with 0" "$rc" "0"
+check "the env file carries the new tag" "$(grep -E '^TAG=' "$GATE_ENV")" "TAG=sha-abc1234"
+check "the previous tag is kept as last good" "$(cat "$W/root/stg/.last-good")" "sha-0000000"
+check "pulls the requested tag" "$(head -1 "$GATE_CALLS")" "docker pull ghcr.io/menteludic/ludoteca:sha-abc1234"
+check "migrates before starting" \
   "$(sed -n '3p;4p' "$GATE_CALLS" | grep -c 'migrate\|up -d')" "2"
 
-echo "health roto: vuelve a la versión anterior"
+echo "broken health: rolls back"
 reset
 GATE_BROKEN=1 SSH_ORIGINAL_COMMAND="deploy stg sha-abc1234" "$W/gate.sh" > "$W/out" 2>&1 && rc=0 || rc=$?
 unset GATE_BROKEN
-check "sale con 4" "$rc" "4"
-check "el .env vuelve atrás" "$(grep -E '^TAG=' "$GATE_ENV")" "TAG=sha-0000000"
-check "avisa del rollback" "$(grep -c 'rolling back' "$W/out")" "1"
+check "exits with 4" "$rc" "4"
+check "the env file goes back" "$(grep -E '^TAG=' "$GATE_ENV")" "TAG=sha-0000000"
+check "says it is rolling back" "$(grep -c 'rolling back' "$W/out")" "1"
 
-echo "rechazos"
+echo "rejections"
 reset
 SSH_ORIGINAL_COMMAND="deploy stg 1234" "$W/gate.sh" > "$W/out" 2>&1 && rc=0 || rc=$?
-check "etiqueta sin sha- se rechaza" "$(grep -c 'invalid tag' "$W/out")" "1"
-check "no se llama a docker" "$(wc -l < "$GATE_CALLS")" "0"
+check "a tag without sha- is rejected" "$(grep -c 'invalid tag' "$W/out")" "1"
+check "docker is not called" "$(wc -l < "$GATE_CALLS")" "0"
 
 SSH_ORIGINAL_COMMAND="deploy test sha-abc1234" "$W/gate.sh" > "$W/out" 2>&1 && rc=0 || rc=$?
-check "entorno desconocido se rechaza" "$(grep -c 'unknown environment' "$W/out")" "1"
+check "an unknown environment is rejected" "$(grep -c 'unknown environment' "$W/out")" "1"
 
 SSH_ORIGINAL_COMMAND="rm -rf /" "$W/gate.sh" > "$W/out" 2>&1 && rc=0 || rc=$?
-check "comando ajeno se rechaza" "$(grep -c 'denied' "$W/out")" "1"
+check "a foreign command is rejected" "$(grep -c 'denied' "$W/out")" "1"
 
 echo
 if [ "$failures" -eq 0 ]; then
-  echo "gate: todas las comprobaciones en verde"
+  echo "gate: every check is green"
 else
-  echo "gate: $failures comprobaciones en rojo"
+  echo "gate: $failures checks in red"
   exit 1
 fi

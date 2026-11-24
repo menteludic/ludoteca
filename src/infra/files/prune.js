@@ -1,28 +1,42 @@
-import {readdirSync, statSync, unlinkSync} from 'node:fs';
-import {join} from 'node:path';
+/**
+ * Keeps only the newest copies in a directory. It lives at the edge: it reads
+ * the disk and deletes files. The file names are decided by the caller
+ * (`pre-*.db`, `nightly-*.db`), not by this module.
+ */
 
 /**
- * Deja solo las `keep` copias más recientes de un directorio.
+ * Builds the pruning module.
  *
- * Vive en el borde: lee el disco y borra ficheros. El nombre de los ficheros lo
- * decide quien llama (`pre-*.db`, `nightly-*.db`), no esta función.
- *
- * @param {string} dir Directorio donde están las copias.
- * @param {string} prefix Prefijo del nombre de fichero que se conserva.
- * @param {string} suffix Sufijo del nombre de fichero que se conserva.
- * @param {number} keep Cuántas copias se conservan. Si es menor que 1, no se borra nada.
- * @returns {string[]} Nombres de los ficheros borrados.
+ * @param {object} config Module configuration.
+ * @param {{readdirSync: Function, statSync: Function, unlinkSync: Function}} config.fs File system.
+ * @param {(...parts: string[]) => string} config.join Builds a path.
+ * @returns {{oldBackups: Function}} Pruning helpers.
  */
-export const pruneOldBackups = (dir, prefix, suffix, keep) => {
-  if (!Number.isInteger(keep) || keep < 1) return [];
+const Prune = ({fs, join}) => {
+  /**
+   * Deletes the copies beyond `keep`, oldest first.
+   *
+   * @param {string} dir Directory holding the copies.
+   * @param {string} prefix Kept file name prefix.
+   * @param {string} suffix Kept file name suffix.
+   * @param {number} keep How many copies survive. Below 1 nothing is deleted.
+   * @returns {string[]} Names of the deleted files.
+   */
+  const oldBackups = (dir, prefix, suffix, keep) => {
+    if (!Number.isInteger(keep) || keep < 1) return [];
 
-  const candidates = readdirSync(dir)
-    .filter((name) => name.startsWith(prefix) && name.endsWith(suffix))
-    .map((name) => ({name, mtime: statSync(join(dir, name)).mtimeMs}))
-    .sort((a, b) => b.mtime - a.mtime);
+    const candidates = /** @type {string[]} */ (fs.readdirSync(dir))
+      .filter((name) => name.startsWith(prefix) && name.endsWith(suffix))
+      .map((name) => ({name, mtime: fs.statSync(join(dir, name)).mtimeMs}))
+      .sort((a, b) => b.mtime - a.mtime);
 
-  const doomed = candidates.slice(keep).map((file) => file.name);
-  for (const name of doomed) unlinkSync(join(dir, name));
+    const doomed = candidates.slice(keep).map((file) => file.name);
+    for (const name of doomed) fs.unlinkSync(join(dir, name));
 
-  return doomed;
+    return doomed;
+  };
+
+  return Object.freeze({oldBackups});
 };
+
+export {Prune};

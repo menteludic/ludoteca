@@ -1,7 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {createApp} from '../../src/http/app.js';
+import {App} from '../../src/http/app.js';
+import {Problem} from '../../src/http/problem.js';
+
+const messages = {
+  problems: {
+    titles: {404: 'Not found', 500: 'Internal error'},
+    details: {NOT_FOUND: 'Route not found.', INTERNAL: 'Something failed.'},
+  },
+};
 
 const healthy = async () => ({
   status: 'ok',
@@ -12,70 +20,72 @@ const healthy = async () => ({
 });
 
 /**
- * Crea la aplicación con dependencias controladas por la prueba.
+ * Builds the app with dependencies controlled by the test.
  *
- * @param {object} [overrides] Sustituciones parciales de las dependencias.
- * @returns {{app: import('hono').Hono, events: object[]}} Aplicación y log capturado.
+ * @param {object} [overrides] Partial dependency overrides.
+ * @returns {{handler: import('hono').Hono, events: object[]}} App and captured log.
  */
 const buildApp = (overrides = {}) => {
   const events = [];
-  const app = createApp({
+  const {handler} = App({
     health: healthy,
     requestId: () => 'req-1',
     log: (event) => events.push(event),
+    problem: Problem({titles: messages.problems.titles}),
+    messages,
     ...overrides,
   });
 
-  return {app, events};
+  return {handler, events};
 };
 
-test('devuelve 200 con la versión desplegada', async () => {
-  const {app} = buildApp();
+test('answers 200 with the deployed version', async () => {
+  const {handler} = buildApp();
 
-  const response = await app.request('/health');
+  const response = await handler.request('/health');
 
   assert.equal(response.status, 200);
   assert.equal((await response.json()).version, 'sha-abc1234');
 });
 
-test('devuelve 503 cuando el estado es degradado', async () => {
-  const {app} = buildApp({
+test('answers 503 when the status is degraded', async () => {
+  const {handler} = buildApp({
     health: async () => ({status: 'degraded', version: 'sha-abc1234', db: 'ok', schema: 0,
       checkedAt: '2026-11-23T18:00:00.000Z'}),
   });
 
-  const response = await app.request('/health');
+  const response = await handler.request('/health');
 
   assert.equal(response.status, 503);
 });
 
-test('añade identificador de petición y prohíbe la caché', async () => {
-  const {app} = buildApp();
+test('adds a request identifier and forbids caching', async () => {
+  const {handler} = buildApp();
 
-  const response = await app.request('/health');
+  const response = await handler.request('/health');
 
   assert.equal(response.headers.get('x-request-id'), 'req-1');
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
 
-test('una ruta desconocida responde 404 en problem+json', async () => {
-  const {app} = buildApp();
+test('an unknown route answers 404 as problem+json', async () => {
+  const {handler} = buildApp();
 
-  const response = await app.request('/no-existe');
+  const response = await handler.request('/does-not-exist');
 
   assert.equal(response.status, 404);
   assert.equal(response.headers.get('content-type'), 'application/problem+json');
   assert.equal((await response.json()).code, 'NOT_FOUND');
 });
 
-test('un error interno no filtra detalles y queda en el log', async () => {
-  const {app, events} = buildApp({
+test('an internal error leaks nothing and reaches the log', async () => {
+  const {handler, events} = buildApp({
     health: async () => {
       throw new Error('SELECT * FROM users WHERE dni_encrypted = ...');
     },
   });
 
-  const response = await app.request('/health');
+  const response = await handler.request('/health');
   const body = await response.json();
 
   assert.equal(response.status, 500);
@@ -84,10 +94,10 @@ test('un error interno no filtra detalles y queda en el log', async () => {
   assert.equal(events.some((event) => event.level === 'error'), true);
 });
 
-test('registra cada petición con su duración', async () => {
-  const {app, events} = buildApp();
+test('logs every request with its duration', async () => {
+  const {handler, events} = buildApp();
 
-  await app.request('/health');
+  await handler.request('/health');
 
   const entry = events.find((event) => event.path === '/health');
   assert.equal(entry.method, 'GET');

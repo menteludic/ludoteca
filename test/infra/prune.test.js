@@ -3,20 +3,23 @@ import assert from 'node:assert/strict';
 import {mkdtempSync, writeFileSync, readdirSync, utimesSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
+import * as fs from 'node:fs';
 
-import {pruneOldBackups} from '../../src/infra/files/prune.js';
+import {Prune} from '../../src/infra/files/prune.js';
+
+const prune = Prune({fs, join});
 
 /**
- * Crea un directorio temporal con copias de distintas horas.
+ * Creates a temporary directory with copies from different days.
  *
- * @param {string[]} names Nombres de fichero.
- * @returns {string} Ruta del directorio.
+ * @param {string[]} names File names.
+ * @returns {string} Directory path.
  */
 const makeDir = (names) => {
   const dir = mkdtempSync(join(tmpdir(), 'ludoteca-prune-'));
   names.forEach((name, index) => {
     const file = join(dir, name);
-    writeFileSync(file, 'copia');
+    writeFileSync(file, 'copy');
     const when = new Date(2026, 10, 1 + index, 4, 0, 0);
     utimesSync(file, when, when);
   });
@@ -24,27 +27,27 @@ const makeDir = (names) => {
   return dir;
 };
 
-test('conserva las copias más recientes y borra el resto', () => {
+test('keeps the newest copies and deletes the rest', () => {
   const dir = makeDir(['pre-1.db', 'pre-2.db', 'pre-3.db']);
 
-  const removed = pruneOldBackups(dir, 'pre-', '.db', 2);
+  const removed = prune.oldBackups(dir, 'pre-', '.db', 2);
 
   assert.deepEqual(removed, ['pre-1.db']);
   assert.deepEqual(readdirSync(dir).sort(), ['pre-2.db', 'pre-3.db']);
 });
 
-test('no toca ficheros que no son copias', () => {
-  const dir = makeDir(['pre-1.db', 'pre-2.db', 'notas.txt']);
+test('leaves files that are not copies alone', () => {
+  const dir = makeDir(['pre-1.db', 'pre-2.db', 'notes.txt']);
 
-  pruneOldBackups(dir, 'pre-', '.db', 1);
+  prune.oldBackups(dir, 'pre-', '.db', 1);
 
-  assert.deepEqual(readdirSync(dir).sort(), ['notas.txt', 'pre-2.db']);
+  assert.deepEqual(readdirSync(dir).sort(), ['notes.txt', 'pre-2.db']);
 });
 
-test('sin límite válido no borra nada', () => {
+test('deletes nothing without a valid limit', () => {
   const dir = makeDir(['pre-1.db']);
 
-  const removed = pruneOldBackups(dir, 'pre-', '.db', 0);
+  const removed = prune.oldBackups(dir, 'pre-', '.db', 0);
 
   assert.deepEqual(removed, []);
   assert.deepEqual(readdirSync(dir), ['pre-1.db']);
