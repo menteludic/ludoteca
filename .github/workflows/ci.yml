@@ -122,8 +122,13 @@ jobs:
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
           code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
             "https://ludoteca-stg.floyd303.com/health")
-          echo "http $code"
-          cat "$RUNNER_TEMP/body.json"; echo
+          # La comprobación también va al fichero que acaba en el issue: si no,
+          # el fallo se queda en un log que solo se ve con sesión en GitHub.
+          {
+            echo "comprobación staging: http $code"
+            cat "$RUNNER_TEMP/body.json"
+            echo
+          } | tee -a "$RUNNER_TEMP/deploy.log"
           case "$code" in
             401|403)
               echo "staging exige autenticación: define el secret STG_BASIC_AUTH como usuario:contraseña"
@@ -196,9 +201,15 @@ jobs:
           exit $rc
       - name: Comprobar por HTTPS
         run: |
-          body=$(curl -fsS "https://ludoteca.floyd303.com/health")
-          echo "$body"
-          echo "$body" | grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\""
+          code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' \
+            "https://ludoteca.floyd303.com/health")
+          {
+            echo "comprobación producción: http $code"
+            cat "$RUNNER_TEMP/body.json"
+            echo
+          } | tee -a "$RUNNER_TEMP/deploy.log"
+          [ "$code" = "200" ] || { echo "respuesta inesperada de producción: $code"; exit 1; }
+          grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\"" "$RUNNER_TEMP/body.json""
       - name: Publicar el fallo en un issue
         if: failure()
         env:
