@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p jsconfig.json",
-    "test": "node --test test/**/*.test.js",
+    "test": "node --test test/",
     "test:coverage": "c8 --check-coverage --lines 90 --exclude 'src/bootstrap/**' --exclude 'test/**' --reporter text --reporter text-summary npm test",
     "check": "npm run lint && npm run typecheck && npm run test:coverage",
     "start": "node src/bootstrap/server.js"
