@@ -120,9 +120,19 @@ jobs:
         run: |
           AUTH="${{ secrets.STG_BASIC_AUTH }}"
           if [ -n "$AUTH" ]; then set -- -u "$AUTH"; else set --; fi
-          body=$(curl -fsS "$@" "https://ludoteca-stg.floyd303.com/health")
-          echo "$body"
-          echo "$body" | grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\""
+          code=$(curl -sS -o "$RUNNER_TEMP/body.json" -w '%{http_code}' "$@" \
+            "https://ludoteca-stg.floyd303.com/health")
+          echo "http $code"
+          cat "$RUNNER_TEMP/body.json"; echo
+          case "$code" in
+            401|403)
+              echo "staging exige autenticación: define el secret STG_BASIC_AUTH como usuario:contraseña"
+              exit 1
+              ;;
+            200) ;;
+            *) echo "respuesta inesperada de staging: $code"; exit 1 ;;
+          esac
+          grep -q "\"version\":\"${{ steps.tag.outputs.tag }}\"" "$RUNNER_TEMP/body.json"
       - name: Publicar el fallo en un issue
         if: failure()
         env:
