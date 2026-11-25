@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
-import {mkdtempSync} from 'node:fs';
+import {existsSync, mkdtempSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 
@@ -53,6 +53,20 @@ test('an unknown command exits with code 2', () => {
 
   assert.equal(result.status, 2);
   assert.match(result.stdout, /unknown command/);
+});
+
+test('backup can run twice over the same destination', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'ludoteca-cli-'));
+  const database = join(dir, 'ludoteca.db');
+  const target = join(dir, 'pre-sha.db');
+  runCli(['migrate'], database);
+
+  const first = runCli(['backup', '--to', target], database);
+  const second = runCli(['backup', '--to', target], database);
+
+  assert.equal(first.status, 0);
+  assert.equal(second.status, 0);
+  assert.equal(existsSync(target), true);
 });
 
 test('backup without --to exits with code 2', () => {

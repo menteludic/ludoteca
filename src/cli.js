@@ -8,7 +8,7 @@
  *   node src/cli.js backup --to /data/backups/pre-<sha>.db [--keep 5]
  */
 
-import {readdirSync, statSync, unlinkSync} from 'node:fs';
+import {existsSync, readdirSync, statSync, unlinkSync} from 'node:fs';
 import {basename, dirname, join} from 'node:path';
 
 import {Health} from './app/health.js';
@@ -99,6 +99,11 @@ const backup = (args) => {
     log({command: 'backup', error: 'missing --to'});
     return 2;
   }
+
+  // `VACUUM INTO` refuses to overwrite, so a second deploy of the same tag
+  // would die here. The copy belongs to that very tag: removing it first
+  // keeps the command repeatable without touching other versions.
+  if (existsSync(target)) unlinkSync(target);
 
   const database = Database({path: DATABASE_PATH});
   database.backup(target);
