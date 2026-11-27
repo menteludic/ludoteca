@@ -19,8 +19,28 @@ import {Passwords} from './infra/auth/passwords.js';
 import {Prune} from './infra/files/prune.js';
 import {Database} from './infra/sqlite/database.js';
 import {Migrations} from './infra/sqlite/migrations.js';
+import {JsDate} from './infra/time/js-date.js';
 
 const {DATABASE_PATH = '/data/ludoteca.db', APP_VERSION = 'dev'} = process.env;
+
+/** Exit code of a command that did its job. */
+const EXIT_OK = 0;
+/** Exit code of a command that found the system unhealthy. */
+const EXIT_FAILED = 1;
+/** Exit code of a command called with the wrong arguments. */
+const EXIT_USAGE = 2;
+/** Node puts the first own argument after the executable and the script. */
+const ARGV_OFFSET = 2;
+
+/** The clock and the calendar of the process, captured here and passed down. */
+const time = JsDate({Date, Intl});
+
+/**
+ * Reads the wall clock as an ISO instant.
+ *
+ * @returns {string} Current instant.
+ */
+const clock = () => time.toIso(time.nowMs());
 
 /**
  * Writes one JSON log line.
@@ -49,7 +69,7 @@ const option = (args, flag) => {
  */
 const health = () => {
   const database = Database({path: DATABASE_PATH});
-  const migrations = Migrations({database});
+  const migrations = Migrations({database, clock});
   const dbOk = database.isHealthy();
   let schema = 0;
 
@@ -65,13 +85,13 @@ const health = () => {
     version: APP_VERSION,
     dbOk,
     schema,
-    now: new Date().toISOString(),
+    now: clock(),
   });
 
   log(body);
   database.close();
 
-  return body.status === 'ok' ? 0 : 1;
+  return body.status === 'ok' ? EXIT_OK : EXIT_FAILED;
 };
 
 /**
@@ -81,12 +101,12 @@ const health = () => {
  */
 const migrate = () => {
   const database = Database({path: DATABASE_PATH});
-  const result = Migrations({database}).apply();
+  const result = Migrations({database, clock}).apply();
 
   log({command: 'migrate', applied: result.applied, schema: result.version});
   database.close();
 
-  return 0;
+  return EXIT_OK;
 };
 
 /**
@@ -101,7 +121,7 @@ const backup = (args) => {
 
   if (target === undefined) {
     log({command: 'backup', error: 'missing --to'});
-    return 2;
+    return EXIT_USAGE;
   }
 
   // `VACUUM INTO` refuses to overwrite, so a second deploy of the same tag
@@ -118,7 +138,7 @@ const backup = (args) => {
 
   log({command: 'backup', to: basename(target), pruned: removed.length});
 
-  return 0;
+  return EXIT_OK;
 };
 
 /**
@@ -134,7 +154,7 @@ const MIN_PASSWORD_LENGTH = 12;
  */
 const refuse = (error) => {
   log({command: 'create-admin', error});
-  return 2;
+  return EXIT_USAGE;
 };
 
 /**
@@ -168,7 +188,7 @@ const createAdmin = (args) => {
 
   const id = randomUUID();
   const hash = Passwords({crypto: {scryptSync, randomBytes, timingSafeEqual}}).hash(password);
-  const now = new Date().toISOString();
+  const now = clock();
 
   database.prepare(`
     INSERT INTO users (id, email, password_hash, first_name, last_name, created_at)
@@ -179,7 +199,7 @@ const createAdmin = (args) => {
 
   log({command: 'create-admin', email, roles: ['app_admin']});
 
-  return 0;
+  return EXIT_OK;
 };
 
 /** @type {Record<string, (args: string[]) => number>} */
@@ -190,12 +210,12 @@ const COMMANDS = {
   'create-admin': (args) => createAdmin(args),
 };
 
-const [command = '', ...args] = process.argv.slice(2);
+const [command = '', ...args] = process.argv.slice(ARGV_OFFSET);
 const run = COMMANDS[command];
 
 if (run === undefined) {
   log({error: `unknown command: ${command}`, commands: Object.keys(COMMANDS)});
-  process.exit(2);
+  process.exit(EXIT_USAGE);
 }
 
 process.exit(run(args));

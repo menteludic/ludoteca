@@ -16,16 +16,10 @@
 import * as R from 'ramda';
 
 /**
- * Reads any instant the database or the caller may hand in.
+ * Builds the module over the calendar it is handed.
  *
- * @param {string | number | Date} value Instant as ISO string, epoch or Date.
- * @returns {number} Milliseconds since the epoch.
- */
-const ms = (value) => new Date(value).getTime();
-
-/**
- * Builds the module. It has nothing to configure.
- *
+ * @param {{time: import('../infra/time/js-date.js').Calendar}} config Calendar
+ *   used to read instants, so this code names no global.
  * @returns {{isOpen: (facts: OpenFacts) => boolean,
  *   slotInCourse: (slots: Slot[], at: Instant) => Slot | null,
  *   nextSlot: (slots: Slot[], at: Instant) => Slot | null,
@@ -33,14 +27,20 @@ const ms = (value) => new Date(value).getTime();
  *   slotsOverlap: (a: Slot, b: Slot) => boolean,
  *   slotFits: (event: EventRow, candidate: Slot) => boolean}} Frozen module.
  */
-const EventState = () => {
+const EventState = (config) => {
+  if (config === undefined || config.time === undefined) {
+    throw new Error('EventState needs the calendar');
+  }
+
+  const {time} = config;
+
   /**
    * Builds the facts of one slot in numbers, so the comparisons are one kind.
    *
    * @param {Slot} one Slot as stored.
    * @returns {{slot: Slot, start: number, end: number}} Slot and its bounds.
    */
-  const bounds = (one) => ({slot: one, start: ms(one.startsAt), end: ms(one.endsAt)});
+  const bounds = (one) => ({slot: one, start: time.toMs(one.startsAt), end: time.toMs(one.endsAt)});
 
   /**
    * Tells whether an instant falls inside a slot, both ends included: the event
@@ -61,7 +61,7 @@ const EventState = () => {
    * @returns {Slot | null} Slot in course.
    */
   const slotInCourse = (slots, at) => {
-    const instant = ms(at);
+    const instant = time.toMs(at);
     const found = (slots ?? []).find((one) => {
       const {start, end} = bounds(one);
       return contains(start, end, instant);
@@ -79,9 +79,9 @@ const EventState = () => {
    * @returns {Slot | null} Next slot.
    */
   const nextSlot = (slots, at) => {
-    const instant = ms(at);
-    const pending = R.sortWith([R.ascend((/** @type {Slot} */ one) => ms(one.startsAt))])(
-      (slots ?? []).filter((one) => ms(one.endsAt) >= instant));
+    const instant = time.toMs(at);
+    const pending = R.sortWith([R.ascend((/** @type {Slot} */ one) => time.toMs(one.startsAt))])(
+      (slots ?? []).filter((one) => time.toMs(one.endsAt) >= instant));
 
     return /** @type {Slot | null} */ (pending[0] ?? null);
   };
@@ -99,7 +99,7 @@ const EventState = () => {
     const until = event.manualClosedUntil;
     if (until === undefined || until === null) return true;
 
-    return ms(at) > ms(until);
+    return time.toMs(at) > time.toMs(until);
   };
 
   /**
@@ -113,17 +113,17 @@ const EventState = () => {
    * @returns {EventWithSlots | null} Event that opens, if any.
    */
   const openEventOf = (events, at) => {
-    const instant = ms(at);
+    const instant = time.toMs(at);
     const inCourse = (events ?? [])
       .map((one) => ({event: one, slot: slotInCourse(one.slots, at)}))
       .filter((pair) => pair.slot !== null && isOpen({event: pair.event, slots: [pair.slot], at}))
-      .map((pair) => ({...pair, start: ms(/** @type {Slot} */ (pair.slot).startsAt)}));
+      .map((pair) => ({...pair, start: time.toMs(/** @type {Slot} */ (pair.slot).startsAt)}));
 
     if (inCourse.length === 0) return null;
 
     const ranked = R.sortWith([
       R.ascend((pair) => pair.start),
-      R.ascend((pair) => ms(pair.event.createdAt ?? instant)),
+      R.ascend((pair) => time.toMs(pair.event.createdAt ?? instant)),
       R.ascend((pair) => pair.event.id),
     ], inCourse);
 
@@ -155,10 +155,10 @@ const EventState = () => {
    * @returns {boolean} True when the slot fits.
    */
   const slotFits = (event, candidate) => {
-    const start = ms(candidate.startsAt);
-    const end = ms(candidate.endsAt);
+    const start = time.toMs(candidate.startsAt);
+    const end = time.toMs(candidate.endsAt);
 
-    return start < end && start >= ms(event.startsAt) && end <= ms(event.endsAt);
+    return start < end && start >= time.toMs(event.startsAt) && end <= time.toMs(event.endsAt);
   };
 
   return Object.freeze({isOpen, slotInCourse, nextSlot, openEventOf, slotsOverlap, slotFits});

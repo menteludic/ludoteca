@@ -5,6 +5,11 @@
 
 import {Hono} from 'hono';
 
+/** Status of a healthy answer. */
+const HTTP_OK = 200;
+/** Status of an answer that says the service cannot serve yet. */
+const HTTP_UNAVAILABLE = 503;
+
 /**
  * @typedef {{status: 'ok' | 'degraded', version: string, db: 'ok' | 'unavailable',
  *   schema: number, checkedAt: string}} HealthBody
@@ -16,13 +21,14 @@ import {Hono} from 'hono';
  *
  * @param {object} deps Edge dependencies.
  * @param {() => Promise<HealthBody>} deps.health Returns the `/health` body.
+ * @param {{nowMs: () => number}} deps.clock Reads the wall clock for the request log.
  * @param {() => string} deps.requestId Generates a request identifier.
  * @param {(event: object) => void} deps.log Writes a structured log line.
  * @param {{build: Function}} deps.problem Builds a problem body.
  * @param {Messages} deps.messages Catalogue of interface texts.
  * @returns {{handler: Hono}} Application ready to serve or to test with `handler.request`.
  */
-const App = ({health, requestId, log, problem, messages}) => {
+const App = ({health, clock, requestId, log, problem, messages}) => {
   const handler = new Hono();
 
   /**
@@ -47,20 +53,20 @@ const App = ({health, requestId, log, problem, messages}) => {
     const id = requestId();
     c.header('X-Request-Id', id);
     c.header('Cache-Control', 'no-store');
-    const started = Date.now();
+    const started = clock.nowMs();
     await next();
     log({
       requestId: id,
       method: c.req.method,
       path: c.req.path,
       status: c.res.status,
-      durationMs: Date.now() - started,
+      durationMs: clock.nowMs() - started,
     });
   });
 
   handler.get('/health', async (c) => {
     const body = await health();
-    return c.json(body, body.status === 'ok' ? 200 : 503);
+    return c.json(body, body.status === 'ok' ? HTTP_OK : HTTP_UNAVAILABLE);
   });
 
   handler.notFound((c) =>

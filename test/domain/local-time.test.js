@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {LocalTime} from '../../src/domain/local-time.js';
+import {JsDate} from '../../src/infra/time/js-date.js';
 
-const madrid = LocalTime();
+const calendar = JsDate({Date, Intl});
+const madrid = LocalTime({time: calendar});
 
 test('a winter hour keeps the offset of one hour', () => {
   assert.equal(madrid.toInstant('2026-11-28', '12:00'), '2026-11-28T11:00:00.000Z');
@@ -48,7 +50,11 @@ test('local time and instant survive a round trip, on both sides of the change',
 });
 
 test('a zone other than Madrid is a matter of configuration, not of code', () => {
-  const utc = LocalTime({timeZone: 'UTC'});
+  const utc = LocalTime({timeZone: 'UTC', time: calendar});
 
   assert.equal(utc.toInstant('2026-11-28', '12:00'), '2026-11-28T12:00:00.000Z');
+});
+
+test('the module refuses to be built without a calendar', () => {
+  assert.throws(() => LocalTime(/** @type {any} */ ({})), /calendar/);
 });

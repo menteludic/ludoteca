@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {EventState} from '../../src/domain/event-state.js';
+import {JsDate} from '../../src/infra/time/js-date.js';
 
-const {isOpen, slotInCourse, nextSlot, openEventOf, slotsOverlap, slotFits} = EventState();
+const {isOpen, slotInCourse, nextSlot, openEventOf, slotsOverlap, slotFits} =
+  EventState({time: JsDate({Date, Intl})});
 
 /**
  * Builds an ISO instant from a UTC day and time, so the cases read as clocks.
@@ -125,4 +127,8 @@ test('the answer depends only on the instant handed in, never on a clock of its 
   assert.equal(isOpen({...facts, at: at('2026-11-28', '11:00')}), true);
   assert.equal(isOpen({...facts, at: at('2026-11-28', '15:00')}), false);
   assert.equal(isOpen({...facts, at: at('2026-11-28', '11:00')}), true);
+});
+
+test('the module refuses to be built without a calendar', () => {
+  assert.throws(() => EventState(/** @type {any} */ ({})), /calendar/);
 });

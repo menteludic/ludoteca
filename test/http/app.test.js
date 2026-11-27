@@ -29,6 +29,7 @@ const healthy = async () => ({
 const buildApp = (overrides = {}) => {
   const events = [];
   const {handler} = App({
+    clock: {nowMs: () => 0},
     health: healthy,
     requestId: () => 'req-1',
     log: (event) => events.push(event),

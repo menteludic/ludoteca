@@ -175,10 +175,12 @@ const MIGRATIONS = [
  *
  * @param {object} config Module configuration.
  * @param {{exec: Function, prepare: Function}} config.database Open database.
- * @param {() => string} [config.clock] Returns the ISO instant to record.
+ * @param {() => string} config.clock Returns the ISO instant to record.
  * @returns {{apply: Function, version: Function}} Migration runner.
  */
-const Migrations = ({database, clock = () => new Date().toISOString()}) => {
+const Migrations = ({database, clock}) => {
+  if (clock === undefined) throw new Error('Migrations needs the clock');
+
   /**
    * Creates the ledger table when it is missing. It is the first thing the
    * runner needs.

@@ -58,7 +58,7 @@ export {Result};
 
 | Módulo | Cómo llega |
 |---|---|
-| Tiene configuración, estado o efectos (`Database`, `Migrations`, `Prune`, `Problem`, `App`) | Siempre inyectado. Sin valores por defecto ocultos: si falta, falla al construir, no al usarlo. |
+| Tiene configuración, estado o efectos (`Database`, `Migrations`, `Prune`, `Problem`, `App`, `JsDate`) | Siempre inyectado. Sin valores por defecto ocultos: si falta, falla al construir, no al usarlo. |
 | Es puro y no tiene configuración (`Result`, `Health`) | Lo construye el compositor una vez y viaja en el objeto de dependencias del caso de uso. |
 
 Un caso de uso recibe las dependencias primero y los datos después: `createLoan(deps, input)`. Así añadir un módulo no cambia la firma de cada llamada, y el dominio sigue recibiendo datos y devolviendo datos. Dentro de una función pura no se instancia nada.
@@ -75,7 +75,9 @@ Se usa **cuando aporta algo que el lenguaje no da en una línea**: `curry` y `cu
 - Exportar funciones sueltas desde un módulo de `src/`: se exporta la fábrica.
 - Importar en `src/domain` cualquier cosa que no sea un módulo relativo o `ramda`.
 - Escribir castellano en el código: comentarios, mensajes o nombres.
-- Leer la hora del sistema en el núcleo: el instante entra como parámetro. `Date`, `Intl.DateTimeFormat` y `Set` sí se pueden construir: el lenguaje no da otra forma y convertir hora local e instante (`src/domain/local-time.js`) es aritmética, no una lectura de reloj.
+- Llamar a una global del entorno (`Date`, `Intl`, `crypto`, `console`, `fs`, `process`) fuera de `src/bootstrap/`, `src/cli.js` y los adaptadores de `src/infra/`. Llegan como dependencia: el reloj y el calendario, a través de `JsDate` (`src/infra/time/js-date.js`).
+- Leer la hora del sistema en el núcleo: el instante entra como parámetro.
+- Escribir un número con significado dentro de una expresión. Se declara como constante con nombre donde se usa (`MILLIS_PER_DAY`, `EXIT_USAGE`, `MAX_MEM_MIB`); la regla `no-magic-numbers` lo comprueba en todo `src/`.
 - Consultas construidas concatenando texto.
 - Secretos, DNIs reales ni datos de producción en el repositorio o en las pruebas.
 - `console.log` fuera de `src/cli.js` y `src/bootstrap/`.

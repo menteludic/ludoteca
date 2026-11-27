@@ -22,6 +22,7 @@ const readSpec = () => yaml.load(readFileSync(new URL('../../openapi.yaml', impo
  */
 const buildApp = () => {
   const {handler} = App({
+    clock: {nowMs: () => 0},
     health: async () => ({
       status: 'ok',
       version: 'sha-abc1234',
