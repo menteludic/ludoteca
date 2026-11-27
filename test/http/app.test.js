@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {App} from '../../src/http/app.js';
+import {Problems} from '../../src/domain/problems.js';
 import {Problem} from '../../src/http/problem.js';
 
 const messages = {
@@ -31,7 +32,7 @@ const buildApp = (overrides = {}) => {
     health: healthy,
     requestId: () => 'req-1',
     log: (event) => events.push(event),
-    problem: Problem({titles: messages.problems.titles}),
+    problem: Problem({problems: Problems(), titles: messages.problems.titles}),
     messages,
     ...overrides,
   });
@@ -104,3 +105,4 @@ test('logs every request with its duration', async () => {
   assert.equal(entry.status, 200);
   assert.equal(typeof entry.durationMs, 'number');
 });
+

@@ -9,6 +9,7 @@ import {serve} from '@hono/node-server';
 
 import {Health} from '../app/health.js';
 import {App} from '../http/app.js';
+import {Problems} from '../domain/problems.js';
 import {Problem} from '../http/problem.js';
 import {Database} from '../infra/sqlite/database.js';
 import {Migrations} from '../infra/sqlite/migrations.js';
@@ -39,7 +40,7 @@ const messages = readMessages();
 const database = Database({path: DATABASE_PATH});
 const migrations = Migrations({database});
 const health = Health();
-const problem = Problem({titles: messages.problems.titles});
+const problem = Problem({problems: Problems(), titles: messages.problems.titles});
 
 /**
  * Schema version applied, or 0 when the database has not been migrated yet.
