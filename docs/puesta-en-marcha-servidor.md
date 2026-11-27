@@ -449,17 +449,44 @@ Aviso sobre la visibilidad: hacer un paquete público es **irreversible** en Git
 
 ## 8. Estado del primer despliegue
 
-Comprobado el 23/11/2026, no deducido:
+Comprobado el 25/11/2026, no deducido. Ciclo completo en verde: PR → `quality` → `image` → `deploy-staging` → `deploy-production`, ejecución 29 con el commit `dc2fdd5`.
 
 ```sh
-$ curl -sS https://ludoteca-stg.floyd303.com/health
-{"status":"ok","version":"sha-0a668ab","db":"ok","schema":1,"checkedAt":"..."}
 $ curl -sS https://ludoteca.floyd303.com/health
-{"status":"ok","version":"sha-0a668ab","db":"ok","schema":1,"checkedAt":"..."}
+{"status":"ok","version":"sha-dc2fdd5","db":"ok","schema":1,"checkedAt":"..."}
+$ curl -sS -o /dev/null -w '%{http_code}' https://ludoteca-stg.floyd303.com/health
+401
 ```
 
-La etiqueta `sha-0a668ab` es la del último commit de `main`, así que la versión llegó por el pipeline: `quality` → `image` (GHCR, `sha-<corto>`) → `deploy-staging` → `deploy-production`.
+Producción sirve el commit de `main` sin que nadie toque el servidor. Staging sirve la misma versión y sigue pidiendo contraseña a quien no la tiene; su comprobación interna, que la lleva, pasó.
 
-**Trampa que costó una vuelta.** «Re-run failed jobs» vuelve a ejecutar solo los trabajos que fallaron, sin los `outputs` del trabajo de imagen. Por eso la etiqueta ahora se calcula dentro de cada trabajo de despliegue a partir de `github.sha`. Consecuencia práctica: si producción quedó en `skipped`, «Re-run failed jobs» no la relanza; hay que usar «Re-run all jobs» o empujar un commit.
+### Lo que costó una vuelta, y por qué no vuelve a costarla
+
+| Síntoma | Causa | Arreglo |
+|---|---|---|
+| `output file already exists` en `backup` | `VACUUM INTO` no sobrescribe, y un segundo despliegue del mismo commit encontraba la copia del primero | El CLI borra su propia copia antes: desplegar dos veces la misma etiqueta es repetible |
+| El despliegue funcionó y el trabajo quedó rojo sin decir por qué | La comprobación por HTTPS no capturaba el error de `curl` y abortaba antes de escribir | Se recorta el valor del secret y se registra `curl exit` y el HTTP en el issue |
+| `Cannot find module .../test` solo en el pipeline | `node --test <directorio>` se acepta desde Node 26; en 24 trata la ruta como módulo | Glob entrecomillado, que funciona en las dos versiones |
+| Las pruebas del CLI nunca corrían en el pipeline | `test/**/*.test.js` en `sh` significa `test/*/*.test.js`: un solo nivel | `node --test "test/**/*.test.js"` |
+| Aviso de Node 20 en cada ejecución | `actions/checkout` y `actions/setup-node` en v4 | v5, fijadas por SHA como el resto |
+
+**Trampa que costó otra vuelta.** «Re-run failed jobs» vuelve a ejecutar solo los trabajos que fallaron, sin los `outputs` del trabajo de imagen. Por eso la etiqueta se calcula dentro de cada trabajo de despliegue a partir de `github.sha`. Consecuencia práctica: si producción quedó en `skipped`, «Re-run failed jobs» no la relanza; hay que usar «Re-run all jobs» o empujar un commit.
 
 **Diagnóstico sin acceso a los logs.** La API de Actions exige permisos de administración, así que un fallo de despliegue se publica además como issue del repositorio, con las últimas líneas de la salida del `ssh`. Cualquier persona con acceso de lectura al repositorio lo ve. Cerrar los issues cuando el despliegue pase.
+
+## 9. La primera cuenta de administración
+
+En cuanto exista la interfaz de administración, la primera cuenta se crea por consola, en el servidor:
+
+```sh
+cd /home/ubuntu/docker/ludoteca/prod
+printf '%s\n' 'una contraseña larga de verdad' | \
+  docker compose run --rm -T app node src/cli.js create-admin \
+    --email tu@correo.example --first-name Nombre
+```
+
+- La contraseña pasa por la entrada estándar: no queda en el historial del shell ni en la lista de procesos. `--password` existe para pruebas locales.
+- Mínimo 12 caracteres; por debajo, el comando se niega con `password too short`.
+- Responde `{"command":"create-admin","email":"...","roles":["app_admin"]}`.
+- El mismo correo dos veces se rechaza con `email already taken` y código de salida 2.
+- La contraseña se guarda con scrypt (`N=2^17, r=8, p=1`, sal de 32 bytes), nunca en claro ni con un hash rápido.
