@@ -6,12 +6,24 @@
       "403": "Sin permiso",
       "404": "No encontrado",
       "409": "Conflicto",
+      "410": "Ya no está",
       "413": "Demasiado grande",
       "429": "Demasiadas peticiones",
       "500": "Error interno",
       "503": "Servicio no disponible"
     },
     "details": {
+      "EVENT_CLOSED": "El evento está cerrado. Vuelve cuando se abra el siguiente.",
+      "GAME_NOT_AVAILABLE": "Ese juego no está disponible ahora mismo.",
+      "LOAN_ALREADY_ACTIVE": "Ya tienes un préstamo activo. Devuélvelo para pedir otro.",
+      "ADULT_REQUIRED": "Para este préstamo hace falta un adulto responsable.",
+      "PROFILE_INCOMPLETE": "Completa tu perfil antes de pedir un juego.",
+      "QR_INVALID": "El código no es válido. Avisa al puesto de control.",
+      "QR_EXPIRED": "El código ha caducado. Pide el juego otra vez.",
+      "QR_ALREADY_USED": "Ese código ya se ha usado. Avisa al puesto de control.",
+      "GAME_ON_LOAN": "Ese juego está prestado y no se puede retirar.",
+      "FORBIDDEN": "No tienes permiso para esta acción.",
+      "IMPORT_BLOCKED": "No se puede importar con un evento abierto o con juegos fuera.",
       "NOT_FOUND": "Esa dirección no existe.",
       "INTERNAL": "Algo ha fallado por nuestra parte."
     }
