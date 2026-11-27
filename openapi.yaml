@@ -42,6 +42,26 @@ paths:
                 $ref: '#/components/schemas/Problem'
 components:
   schemas:
+    ErrorCode:
+      type: string
+      description: |
+        Código estable del Anexo D. La interfaz ramifica con él y el status de
+        la respuesta sale de la misma tabla (ADR-021); la frase para la persona
+        la pone el catálogo de textos, nunca la API.
+      enum:
+        - EVENT_CLOSED
+        - GAME_NOT_AVAILABLE
+        - LOAN_ALREADY_ACTIVE
+        - ADULT_REQUIRED
+        - PROFILE_INCOMPLETE
+        - QR_INVALID
+        - QR_EXPIRED
+        - QR_ALREADY_USED
+        - GAME_ON_LOAN
+        - FORBIDDEN
+        - IMPORT_BLOCKED
+        - NOT_FOUND
+        - INTERNAL
     Health:
       type: object
       required: [status, version, db, schema, checkedAt]
@@ -80,7 +100,6 @@ components:
         instance:
           type: string
         code:
-          type: string
-          description: Código estable del Anexo D
+          $ref: '#/components/schemas/ErrorCode'
         requestId:
           type: string
