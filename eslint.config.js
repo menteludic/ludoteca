@@ -57,7 +57,13 @@ export default [
       'no-restricted-syntax': ['error',
         {selector: 'ClassDeclaration', message: 'Function composition: no classes.'},
         {selector: 'ClassExpression', message: 'Function composition: no classes.'},
-        {selector: 'NewExpression', message: 'No new in the core; the edge builds and passes data in.'},
+        // `new` of our own classes stays out of the core. `Date`,
+        // `Intl.DateTimeFormat` and `Set` are allowed: the language offers no
+        // functional way to build them, and reading a clock still arrives as data.
+        {selector: 'NewExpression'
+          + ':not([callee.name=\'Date\']):not([callee.name=\'Set\'])'
+          + ':not([callee.property.name=\'DateTimeFormat\'])',
+        message: 'No new in the core; the edge builds and passes data in.'},
         {selector: 'ThisExpression', message: 'No this in the core.'},
         {selector: "CallExpression[callee.name='Date']", message: 'The instant arrives as a parameter.'},
       ],

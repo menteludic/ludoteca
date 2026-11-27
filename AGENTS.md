@@ -75,7 +75,7 @@ Se usa **cuando aporta algo que el lenguaje no da en una línea**: `curry` y `cu
 - Exportar funciones sueltas desde un módulo de `src/`: se exporta la fábrica.
 - Importar en `src/domain` cualquier cosa que no sea un módulo relativo o `ramda`.
 - Escribir castellano en el código: comentarios, mensajes o nombres.
-- Leer la hora del sistema en el núcleo: el instante entra como parámetro.
+- Leer la hora del sistema en el núcleo: el instante entra como parámetro. `Date`, `Intl.DateTimeFormat` y `Set` sí se pueden construir: el lenguaje no da otra forma y convertir hora local e instante (`src/domain/local-time.js`) es aritmética, no una lectura de reloj.
 - Consultas construidas concatenando texto.
 - Secretos, DNIs reales ni datos de producción en el repositorio o en las pruebas.
 - `console.log` fuera de `src/cli.js` y `src/bootstrap/`.
