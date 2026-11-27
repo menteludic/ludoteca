@@ -29,17 +29,19 @@ const App = ({health, requestId, log, problem, messages}) => {
    * Answers with an RFC 9457 body.
    *
    * @param {import('hono').Context} c Hono context.
-   * @param {400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 | 503} status HTTP code.
-   * @param {string} code Stable code.
+   * @param {string} code Stable code; its status comes from the catalogue.
    * @param {string} detail Sentence for the person.
    * @returns {Response} Response typed as `application/problem+json`.
    */
-  const asProblem = (c, status, code, detail) =>
-    c.body(
-      JSON.stringify(problem.build(status, code, detail)),
-      status,
+  const asProblem = (c, code, detail) => {
+    const body = problem.build(code, detail);
+
+    return c.body(
+      JSON.stringify(body),
+      /** @type {any} */ (body.status),
       {'content-type': 'application/problem+json'},
     );
+  };
 
   handler.use('*', async (c, next) => {
     const id = requestId();
@@ -62,11 +64,11 @@ const App = ({health, requestId, log, problem, messages}) => {
   });
 
   handler.notFound((c) =>
-    asProblem(c, 404, 'NOT_FOUND', messages.problems.details.NOT_FOUND ?? 'Not found'));
+    asProblem(c, 'NOT_FOUND', messages.problems.details.NOT_FOUND ?? 'Not found'));
 
   handler.onError((err, c) => {
     log({level: 'error', error: err.message, path: c.req.path});
-    return asProblem(c, 500, 'INTERNAL', messages.problems.details.INTERNAL ?? 'Internal error');
+    return asProblem(c, 'INTERNAL', messages.problems.details.INTERNAL ?? 'Internal error');
   });
 
   return Object.freeze({handler});

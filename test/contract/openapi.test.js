@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import yaml from 'js-yaml';
 
+import {Problems} from '../../src/domain/problems.js';
 import {App} from '../../src/http/app.js';
 import {Problem} from '../../src/http/problem.js';
 
@@ -30,7 +31,7 @@ const buildApp = () => {
     }),
     requestId: () => 'req-1',
     log: () => {},
-    problem: Problem({titles: {404: 'No encontrado', 500: 'Error interno'}}),
+    problem: Problem({problems: Problems(), titles: {404: 'No encontrado', 500: 'Error interno'}}),
     messages: {
       problems: {
         titles: {404: 'No encontrado', 500: 'Error interno'},
@@ -86,4 +87,11 @@ test('every component reference points at a declared component', () => {
   for (const name of refs) {
     assert.ok(declared.has(name), `$ref points at an undeclared schema: ${name}`);
   }
+});
+
+test('the contract lists exactly the codes of the catalogue', () => {
+  const spec = readSpec();
+  const documented = /** @type {string[]} */ (spec.components.schemas.ErrorCode.enum);
+
+  assert.deepEqual([...documented].sort(), Problems().codes().sort());
 });
