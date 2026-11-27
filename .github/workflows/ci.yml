@@ -33,7 +33,7 @@ jobs:
       - run: npm run test:coverage
       - name: Dependency audit
         run: npm audit --audit-level=high
-      - name: Gate del despliegue
+      - name: Deploy gate
         run: sh deploy/gate-selftest.sh
       - name: Private key material
         run: |
