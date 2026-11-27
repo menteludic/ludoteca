@@ -1,0 +1,86 @@
+openapi: 3.1.0
+info:
+  title: API de la Ludoteca
+  version: 0.1.0
+  description: |
+    Contrato de la API de la Ludoteca. Se amplía en cada paso de F1: hoy solo
+    declara el estado del servicio y la forma de los errores, que es lo que
+    existe. El fichero es la fuente del trabajo de contrato del pipeline
+    (PEN-32): una ruta documentada que no responde, o al revés, hace fallar la
+    prueba de `test/contract`.
+servers:
+  - url: https://ludoteca.floyd303.com
+    description: Producción
+  - url: https://ludoteca-stg.floyd303.com
+    description: Staging, protegido con autenticación básica
+tags:
+  - name: sistema
+    description: Estado del servicio y errores comunes
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags:
+        - sistema
+      summary: Estado del servicio
+      description: |
+        Responde si el proceso está listo: base de datos accesible, esquema
+        aplicado y versión desplegada. Es la comprobación que usan el
+        healthcheck del contenedor y el pipeline.
+      responses:
+        '200':
+          description: El servicio está listo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: El servicio no puede atender todavía
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, version, db, schema, checkedAt]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        version:
+          type: string
+          description: Etiqueta de la imagen desplegada (`sha-<corto>`)
+        db:
+          type: string
+          enum: [ok, error]
+        schema:
+          type: integer
+          description: Versión del esquema aplicada
+        checkedAt:
+          type: string
+          format: date-time
+    Problem:
+      type: object
+      description: Error en formato RFC 9457
+      required: [type, title, status, code, requestId]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+          description: Título del catálogo, en el idioma de la petición
+        status:
+          type: integer
+        detail:
+          type: string
+          description: Detalle del catálogo, o mensaje opaco
+        instance:
+          type: string
+        code:
+          type: string
+          description: Código estable del Anexo D
+        requestId:
+          type: string
