@@ -37,6 +37,21 @@ export default [
     files: ['src/**/*.js'],
     plugins: {jsdoc},
     rules: {
+      // A number in the middle of an expression says nothing about what it is.
+      // Named constants say it once, where it is defined.
+      'no-magic-numbers': ['error', {
+        ignore: [0, 1, -1],
+        ignoreArrayIndexes: true,
+        ignoreDefaultValues: true,
+        detectObjects: false,
+        enforceConst: true,
+      }],
+    },
+  },
+  {
+    files: ['src/**/*.js'],
+    plugins: {jsdoc},
+    rules: {
       'jsdoc/require-jsdoc': ['error', {
         publicOnly: true,
         contexts: [
@@ -57,9 +72,17 @@ export default [
       'no-restricted-syntax': ['error',
         {selector: 'ClassDeclaration', message: 'Function composition: no classes.'},
         {selector: 'ClassExpression', message: 'Function composition: no classes.'},
-        {selector: 'NewExpression', message: 'No new in the core; the edge builds and passes data in.'},
+        // No `new` of our own classes, and no global clock either: the calendar
+        // arrives as a dependency. `Error` is the one exception, because a
+        // missing dependency is a programming fault, not a library to swap.
+        {selector: "NewExpression:not([callee.name='Error'])",
+          message: 'No new in the core; the edge builds and passes data in.'},
         {selector: 'ThisExpression', message: 'No this in the core.'},
         {selector: "CallExpression[callee.name='Date']", message: 'The instant arrives as a parameter.'},
+        // Naming a clock, a calendar or a random source is the same fault as
+        // building one: they all arrive as dependencies from the edge.
+        {selector: "Identifier[name='Date'], Identifier[name='Intl'], Identifier[name='crypto']",
+          message: 'Environment globals arrive as dependencies; no rule names them.'},
       ],
     },
   },

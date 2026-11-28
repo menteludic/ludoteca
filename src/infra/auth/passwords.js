@@ -13,8 +13,15 @@ const R = 8;
 const P = 1;
 const SALT_BYTES = 32;
 const KEY_BYTES = 64;
-/** scrypt needs 128*N*r bytes; the default 32 MB limit is not enough. */
-const MAX_MEM = 256 * 1024 * 1024;
+/** A kibibyte, the step of the memory units. */
+const KIBIBYTE = 1024;
+/** A mebibyte, to size the memory limit in a unit a person reads. */
+const MEBIBYTE = KIBIBYTE * KIBIBYTE;
+/** scrypt needs 128*N*r bytes; the default 32 MiB limit is not enough. */
+const MAX_MEM_MIB = 256;
+const MAX_MEM = MAX_MEM_MIB * MEBIBYTE;
+/** A stored value has six fields: `scrypt$N$r$p$salt$hash`. */
+const STORED_FIELDS = 6;
 
 /**
  * @typedef {object} CryptoPrimitives
@@ -82,7 +89,7 @@ const Passwords = ({crypto}) => {
     }
 
     const fields = stored.split('$');
-    if (fields.length !== 6 || fields[0] !== 'scrypt') return false;
+    if (fields.length !== STORED_FIELDS || fields[0] !== 'scrypt') return false;
 
     const [, storedN = '', storedR = '', storedP = '', saltB64 = '', keyB64 = ''] = fields;
     if (Number(storedN) !== N || Number(storedR) !== R || Number(storedP) !== P) return false;
